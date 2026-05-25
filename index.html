@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora Hipotecaria UVA</title>
+<style>
+:root {
+  --bg: #0d1117; --surface: #161b22; --card: #21262d;
+  --border: #30363d; --focus: #58a6ff;
+  --txt: #e6edf3; --muted: #8b949e; --sec: #c9d1d9;
+  --accent: #58a6ff; --accent2: #79c0ff;
+  --ok: #3fb950; --warn: #d29922; --err: #f85149;
+  --mkt-bg: #161200; --mkt-brd: #d29922;
+  --hdr-bg: #1c2d3a; --hdr-txt: #79c0ff;
+  --r: 8px; --rs: 4px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--txt);font-size:14px;line-height:1.5}
+.app-hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px}
+.app-hdr h1{font-size:16px;font-weight:600}
+.app-hdr p{color:var(--muted);font-size:12px}
+.hdr-mkt{margin-left:auto;display:flex;align-items:center;gap:10px}
+.hdr-mkt-field{display:flex;flex-direction:column;gap:1px}
+.hdr-mkt-field label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+.hdr-mkt-irow{display:flex;align-items:center;gap:4px;background:var(--bg);border:1px solid var(--focus);border-radius:var(--rs);padding:4px 8px}
+.hdr-mkt-irow:focus-within{border-color:var(--accent2);box-shadow:0 0 0 2px rgba(88,166,255,.12)}
+.hdr-mkt-irow span{color:var(--muted);font-size:12px;flex-shrink:0}
+.hdr-mkt-irow input{background:none;border:none;outline:none;color:var(--txt);font-size:13px;font-weight:600;width:80px;font-family:inherit}
+.hdr-mkt-sep{width:1px;height:32px;background:var(--border)}
+.badge{background:#1f3a5f;color:var(--accent);border:1px solid var(--accent);border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700}
+.wrap{max-width:1440px;margin:0 auto;padding:14px 20px}
+
+
+/* main 2-col layout */
+.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}}
+
+/* card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.card:last-child{margin-bottom:0}
+.card-hdr{background:var(--hdr-bg);color:var(--hdr-txt);padding:8px 14px;font-size:12px;font-weight:600;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.card-body{padding:14px}
+/* form */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+/* inputs */
+input,select{background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);color:var(--txt);padding:7px 10px;font-size:13px;width:100%;outline:none;transition:border-color .15s}
+input:focus,select:focus{border-color:var(--focus)}
+select option{background:var(--card)}
+.err{color:var(--err);font-size:11px;min-height:14px}
+.hint{color:var(--muted);font-size:11px}
+/* currency toggle */
+.ctog{display:flex;border:1px solid var(--border);border-radius:var(--rs);overflow:hidden;flex-shrink:0}
+.ctog button{background:none;border:none;color:var(--muted);padding:7px 10px;cursor:pointer;font-size:12px;font-weight:700;transition:background .15s,color .15s}
+.ctog button.on{background:#1f3a5f;color:var(--accent)}
+.ctog button:hover:not(.on){background:var(--card);color:var(--txt)}
+.irow{display:flex;align-items:center;gap:7px}
+/* buttons */
+.btn{background:var(--accent);color:#0d1117;border:none;border-radius:var(--rs);padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;transition:background .15s}
+.btn:hover{background:var(--accent2)}
+.btn-s{background:var(--card);color:var(--sec);border:1px solid var(--border);border-radius:var(--rs);padding:7px 14px;font-size:12px;cursor:pointer;transition:background .15s}
+.btn-s:hover{background:var(--border)}
+/* results */
+.res-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.rbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.rbox .bh{background:var(--hdr-bg);color:var(--hdr-txt);padding:8px 14px;font-size:12px;font-weight:600;border-bottom:1px solid var(--border)}
+.rbox ul{list-style:none;padding:8px 14px}
+.rbox ul li{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--sec)}
+.rbox ul li:last-child{border:none}
+.rbox ul li span{color:var(--accent);font-weight:600;text-align:right}
+.rbox .tot{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--card);border-top:1px solid var(--border);font-weight:700;font-size:13px}
+.rbox .tot .tv{color:var(--accent);font-size:17px}
+.tusd{font-size:11px;color:var(--muted)}
+/* bolsillo table */
+.bt{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
+.bt th{background:var(--card);color:var(--muted);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--border);text-align:right}
+.bt th:first-child{text-align:left}
+.bt td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--sec);text-align:right}
+.bt td:first-child{text-align:left;color:var(--txt)}
+.bt tr.bt-total td{background:var(--card);font-weight:700;color:var(--txt);border-bottom:none}
+.bt tr.bt-total td:not(:first-child){color:var(--accent);font-size:14px}
+/* escri table */
+.et{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:10px}
+.et th{background:var(--card);color:var(--muted);font-weight:600;text-align:left;padding:6px 10px;border-bottom:1px solid var(--border)}
+.et td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--sec)}
+.et td:last-child,.et th:last-child{text-align:right;color:var(--accent)}
+.et tr.tr td{background:var(--card);color:var(--txt);font-weight:700;border-bottom:none}
+.et tr.tr td:last-child{color:var(--accent)}
+.exmt{color:var(--ok);font-size:11px}
+/* custom pct */
+.pct-box{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;margin-top:2px}
+.pct-box label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:6px}
+.pct-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.pct-result{font-size:13px;font-weight:700;color:var(--txt)}
+.pct-result .v{color:var(--accent);font-size:16px}
+.pct-result .u{color:var(--muted);font-size:11px;margin-left:5px}
+#apoyoInfo:hover{border-color:var(--accent)!important}
+.tip-wrap{position:relative;display:inline-flex;align-items:center}
+.tip-icon{cursor:help;color:var(--muted);font-size:13px;padding:1px 5px;border-radius:var(--rs);line-height:1;transition:color .15s}
+.tip-icon:hover{color:var(--accent)}
+.tip-box{position:absolute;top:calc(100% + 6px);right:0;background:#2a2f38;border:1px solid var(--border);border-radius:var(--r);padding:10px 12px;font-size:11px;color:var(--sec);width:400px;z-index:200;opacity:0;pointer-events:none;transition:opacity .15s;line-height:1.6;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.tip-wrap:hover .tip-box{opacity:1;pointer-events:auto}
+.tip-box a{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent)}
+.tip-box a:hover{color:var(--accent2)}
+#rs{transition:opacity .2s}
+.hidden{display:none!important}
+.chv{transition:transform .2s;color:var(--muted);font-size:12px}
+.chv.shut{transform:rotate(-90deg)}
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tab{background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:6px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.tab.on{background:#0d1f33;border-color:var(--accent);color:var(--accent)}
+.tab:hover:not(.on){background:var(--card);color:var(--sec)}
+.rbadge{display:inline-block;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700}
+.rbadge-cuota{background:#0f3320;color:var(--ok);border:1px solid var(--ok)}
+.rbadge-bolsillo{background:#3a2a0a;color:var(--warn);border:1px solid var(--warn)}
+.rbadge-banco{background:#3a0d0d;color:var(--err);border:1px solid var(--err)}
+::-webkit-scrollbar{width:7px;height:7px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--muted)}
+</style>
+</head>
+<body>
+
+<div class="app-hdr">
+  <div>
+    <h1>Calculadora Hipotecaria UVA</h1>
+    <p>Adquisición de vivienda única</p>
+  </div>
+  <div class="hdr-mkt">
+    <div class="hdr-mkt-field">
+      <label>Banco</label>
+      <select id="bancoDrop" onchange="setBanco(this.value)" style="background:var(--bg);border:1px solid var(--focus);border-radius:var(--rs);color:var(--txt);padding:4px 8px;font-size:13px;font-weight:600;outline:none;cursor:pointer">
+        <option value="bna">Banco Nación</option>
+        <option value="bbva">BBVA</option>
+        <option value="icbc">ICBC</option>
+      </select>
+    </div>
+    <div class="hdr-mkt-sep"></div>
+    <div class="hdr-mkt-field">
+      <label>UVA</label>
+      <div class="hdr-mkt-irow">
+        <span>$</span>
+        <input type="text" id="valUVA" value="1958.09" oninput="onMkt()">
+      </div>
+    </div>
+    <div class="hdr-mkt-sep"></div>
+    <div class="hdr-mkt-field">
+      <label>USD / ARS</label>
+      <div class="hdr-mkt-irow">
+        <span>$</span>
+        <input type="text" id="cotUSD" value="1400" oninput="onMkt()">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+<div class="tabs">
+  <button class="tab on" id="t1" onclick="showTab(1)">Simular crédito</button>
+  <button class="tab" id="t2" onclick="showTab(2)">¿Cuánto puedo gastar?</button>
+</div>
+
+<div id="tab1-content">
+<div class="main-grid">
+<div><!-- col izquierda: form + results -->
+
+<!-- MAIN FORM -->
+<div class="card">
+  <div class="card-hdr" id="formHdr">
+    Simulá tu crédito hipotecario en UVA · <span id="formBancoNombre" style="color:var(--muted);font-weight:400">Banco Nación</span>
+    <div class="tip-wrap" style="margin-left:auto">
+      <span class="tip-icon">ⓘ</span>
+      <div class="tip-box" id="disc" style="font-size:11px"></div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="grid2" style="margin-bottom:10px">
+      <div class="fg">
+        <label>Plazo en años</label>
+        <select id="Plazo">
+          <option value="">Seleccioná una opción</option>
+          <option value="5">5</option><option value="10">10</option>
+          <option value="15">15</option><option value="20" selected>20</option>
+          <option value="25">25</option><option value="30">30</option>
+        </select>
+        <span class="err" id="e-Plazo"></span>
+      </div>
+      <div class="fg">
+        <label id="lblApoyo">Apoyo máximo: <span id="apoyoMax" style="color:var(--accent)">75%</span></label>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--rs);padding:7px 10px;font-size:12px;color:var(--muted);cursor:pointer;transition:border-color .15s" id="apoyoInfo" onclick="setMontoMax()" title="Click para usar este monto">
+          Hasta <strong id="apoyoMaxInline" style="color:var(--accent)">75%</strong> del valor —
+          <span id="apoyoMaxMonto" style="color:var(--accent)">ingresá el valor de la vivienda</span>
+          <span style="color:var(--muted);font-size:11px;margin-left:3px">↑ usar</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
+      <div class="fg" style="flex:1;min-width:160px">
+        <label>Valor de la vivienda</label>
+        <div class="irow">
+          <div class="ctog">
+            <button id="tvv-ars" onclick="setCur('vv','ars')">ARS</button>
+            <button id="tvv-usd" class="on" onclick="setCur('vv','usd')">USD</button>
+          </div>
+          <input type="text" id="ValorVivienda" placeholder="USD 0" value="180.000" oninput="onAmt('vv')" style="flex:1">
+        </div>
+        <span class="hint" id="h-vv"></span>
+        <span class="err" id="e-ValorVivienda"></span>
+      </div>
+      <div class="fg" style="flex:1;min-width:160px">
+        <label>Monto del crédito</label>
+        <div class="irow">
+          <div class="ctog">
+            <button id="tmc-ars" onclick="setCur('mc','ars')">ARS</button>
+            <button id="tmc-usd" class="on" onclick="setCur('mc','usd')">USD</button>
+          </div>
+          <input type="text" id="Monto" placeholder="USD 0" value="135.000" oninput="onAmt('mc')" style="flex:1">
+        </div>
+        <span class="hint" id="h-mc"></span>
+        <span class="err" id="e-Monto"></span>
+      </div>
+      <button class="btn" onclick="calcular()" style="flex-shrink:0;align-self:flex-start;margin-top:18px">Calcular cuota</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="rs" class="hidden">
+  <div class="res-grid">
+    <div class="rbox">
+      <div class="bh" id="r-bh-detalle">Detalles del préstamo</div>
+      <ul>
+        <li>Prop. de apoyo<span id="r-apoyo"></span></li>
+        <li>Cuota en UVAs<span id="r-cuuva"></span></li>
+        <li>Valor propiedad en UVA<span id="r-propuva"></span></li>
+        <li>Monto inicial en UVA<span id="r-montouva"></span></li>
+        <li>Ingresos nec. titulares + codeudores<span id="r-ingrnec"></span></li>
+        <li>Ingresos mínimos titulares<span id="r-ingrmin"></span></li>
+      </ul>
+      <div class="tot">
+        <span>Cuota en $</span>
+        <div>
+          <div class="tv" id="r-cupesos"></div>
+          <div class="tusd" id="r-cuusd"></div>
+        </div>
+      </div>
+    </div>
+    <div class="rbox">
+      <div class="bh">Tasas y costos financieros</div>
+      <ul>
+        <li>UVA<span id="r-uva"></span></li>
+        <li>TNA<span id="r-tna"></span></li>
+        <li>TEM<span id="r-tem"></span></li>
+        <li>CFT TEM<span id="r-cfttem"></span></li>
+        <li>CFT TNA<span id="r-cfttna"></span></li>
+        <li>CFT TEA<span id="r-cfttea"></span></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</div><!-- /col izquierda -->
+<div><!-- col derecha: escrituración -->
+
+<!-- ESCRITURACIÓN -->
+<div class="card">
+  <div class="card-hdr">
+    Gastos de escrituración
+    <div class="tip-wrap" style="margin-left:auto">
+      <span class="tip-icon">ⓘ fuentes</span>
+      <div class="tip-box">
+        <strong style="color:var(--txt)">Fuentes oficiales PBA 2026</strong><br><br>
+        <a href="https://web.arba.gov.ar/sellos" target="_blank">ARBA — Sellos</a> ·
+        <a href="https://www.arba.gov.ar/archivos/Publicaciones/leyimpositiva2026.pdf" target="_blank">Ley Impositiva PBA 2026 (PDF)</a> ·
+        <a href="https://www.rpba.gov.ar/noticias/Nueva_Gu%EDa_de_Tasas" target="_blank">RPBA — Tasas 2026</a> ·
+        <a href="https://www.colegio-escribanos.org.ar/2025/12/18/ley-impositiva-provincia-de-buenos-aires-ley-15-558/" target="_blank">Col. Escribanos — Ley 15.558</a> ·
+        <a href="https://www.colegio-escribanos.org.ar/2026/01/08/tabla-de-actos-notariales-provincia-de-buenos-aires-5/" target="_blank">Tabla honorarios notariales PBA (vig. 01/01/2026)</a><br><br>
+        Sellos PBA: 2% total, comprador paga 1% (Ley 15.558/2026). Registro RPBA: 2‰ (0,2%). Honorarios escribano: ~1,5% (Ley 6925). En CABA, primera vivienda &lt; $226,1M exenta de sellos.
+      </div>
+    </div>
+  </div>
+  <div id="escriBody">
+    <div class="card-body">
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-bottom:12px">
+        <div class="fg">
+          <label>Provincia</label>
+          <select id="Provincia" onchange="calcEscri()">
+            <option value="caba">Ciudad de Buenos Aires (CABA)</option>
+            <option value="pba" selected>Provincia de Buenos Aires (GBA / PBA)</option>
+            <option value="otra">Otra provincia (estimado)</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Valor del inmueble</label>
+          <div class="irow">
+            <span style="color:var(--muted)">$</span>
+            <input type="text" id="ValorEscri" placeholder="0" oninput="calcEscri()">
+          </div>
+        </div>
+        <div class="fg" style="padding-bottom:2px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--sec);white-space:nowrap">
+            <input type="checkbox" id="PrimeraViv" checked onchange="calcEscri()" style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
+            Primera vivienda
+          </label>
+        </div>
+      </div>
+      <div id="escriRes"></div>
+    </div>
+  </div>
+</div>
+
+<!-- DE TU BOLSILLO -->
+<div class="card" id="bolsilloCard" style="margin-top:14px">
+  <div class="card-hdr">Plata que tenés que poner de tu bolsillo</div>
+  <div class="card-body">
+    <table class="bt">
+      <thead>
+        <tr>
+          <th>Concepto</th>
+          <th>% del valor</th>
+          <th>ARS</th>
+          <th>USD</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Anticipo (valor − crédito)</td>
+          <td id="b-anticipo-pct">—</td>
+          <td id="b-anticipo-ars">—</td>
+          <td id="b-anticipo-usd">—</td>
+        </tr>
+        <tr>
+          <td>Gastos de escrituración</td>
+          <td id="b-escri-pct">—</td>
+          <td id="b-escri-ars">—</td>
+          <td id="b-escri-usd">—</td>
+        </tr>
+        <tr class="bt-total">
+          <td>Total de tu bolsillo</td>
+          <td id="b-total-pct">—</td>
+          <td id="b-total-ars">—</td>
+          <td id="b-total-usd">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+</div><!-- /col derecha -->
+</div><!-- /main-grid -->
+</div><!-- /tab1-content -->
+
+<div id="tab2-content" class="hidden">
+<div class="main-grid">
+<div><!-- col izq: form + scenario -->
+
+<!-- FORM TAB 2 -->
+<div class="card">
+  <div class="card-hdr">Parámetros del escenario · <span id="inv-banco-nombre" style="color:var(--muted);font-weight:400">Banco Nación</span></div>
+  <div class="card-body">
+    <div class="grid2" style="margin-bottom:12px">
+      <div class="fg">
+        <label>Plata disponible en bolsillo</label>
+        <div class="irow">
+          <div class="ctog">
+            <button id="tbol-ars" onclick="setCurInv('bol','ars')">ARS</button>
+            <button id="tbol-usd" class="on" onclick="setCurInv('bol','usd')">USD</button>
+          </div>
+          <input type="text" id="inv-bolsillo" placeholder="USD 0" oninput="calcularInverso()" style="flex:1">
+        </div>
+        <span class="hint" id="h-inv-bol"></span>
+      </div>
+      <div class="fg">
+        <label>Cuota máxima por mes</label>
+        <div class="irow">
+          <div class="ctog">
+            <button id="tcumax-ars" class="on" onclick="setCurInv('cumax','ars')">ARS</button>
+            <button id="tcumax-usd" onclick="setCurInv('cumax','usd')">USD</button>
+          </div>
+          <input type="text" id="inv-cuotamax" placeholder="$ 0" oninput="calcularInverso()" style="flex:1">
+        </div>
+        <span class="hint" id="h-inv-cumax"></span>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="fg">
+        <label>Plazo en años</label>
+        <select id="inv-plazo" onchange="calcularInverso()">
+          <option value="">Seleccioná una opción</option>
+          <option value="5">5</option><option value="10">10</option>
+          <option value="15">15</option><option value="20" selected>20</option>
+          <option value="25">25</option><option value="30">30</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label>Gastos de escrituración</label>
+        <div class="irow">
+          <input type="text" id="inv-escriPct" placeholder="7.10" oninput="this._touched=true;calcularInverso()" style="flex:1">
+          <span style="color:var(--muted);flex-shrink:0">%</span>
+        </div>
+        <span class="hint">Auto-calculado desde Tab 1</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ESCENARIO MÁXIMO -->
+<div class="card">
+  <div class="card-hdr">
+    Escenario máximo
+    <span id="inv-badge" style="margin-left:8px"></span>
+  </div>
+  <div class="card-body">
+    <div id="inv-error" class="err" style="min-height:0;margin-bottom:6px"></div>
+    <div class="res-grid">
+      <div class="rbox">
+        <div class="bh">Valor máx. propiedad</div>
+        <ul>
+          <li>ARS<span id="inv-propARS">—</span></li>
+          <li>USD<span id="inv-propUSD">—</span></li>
+          <li>UVAs<span id="inv-propUVA">—</span></li>
+        </ul>
+      </div>
+      <div class="rbox">
+        <div class="bh">Monto máx. crédito</div>
+        <ul>
+          <li>ARS<span id="inv-monARS">—</span></li>
+          <li>USD<span id="inv-monUSD">—</span></li>
+          <li>UVAs<span id="inv-monUVA">—</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="res-grid" style="margin-top:10px">
+      <div class="rbox">
+        <div class="bh">Cuota mensual resultante</div>
+        <div class="tot">
+          <span>En $</span>
+          <div>
+            <div class="tv" id="inv-cuotaARS">—</div>
+            <div class="tusd" id="inv-cuotaUSD"></div>
+          </div>
+        </div>
+      </div>
+      <div class="rbox">
+        <div class="bh">Ingresos necesarios</div>
+        <div class="tot">
+          <span>Netos</span>
+          <div class="tv" id="inv-ingresos">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /col izq -->
+<div><!-- col der: bolsillo -->
+
+<!-- USO DEL BOLSILLO -->
+<div class="card">
+  <div class="card-hdr">Uso del bolsillo</div>
+  <div class="card-body">
+    <table class="bt">
+      <thead>
+        <tr>
+          <th>Concepto</th>
+          <th>% del valor</th>
+          <th>ARS</th>
+          <th>USD</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Anticipo (<span id="inv-apoyo-pct">—</span>% de tu bolsillo)</td>
+          <td id="inv-b-anticipo-pct">—</td>
+          <td id="inv-b-anticipo-ars">—</td>
+          <td id="inv-b-anticipo-usd">—</td>
+        </tr>
+        <tr>
+          <td>Gastos de escrituración</td>
+          <td id="inv-b-escri-pct">—</td>
+          <td id="inv-b-escri-ars">—</td>
+          <td id="inv-b-escri-usd">—</td>
+        </tr>
+        <tr class="bt-total">
+          <td>Total necesario de bolsillo</td>
+          <td id="inv-b-total-pct">—</td>
+          <td id="inv-b-total-ars">—</td>
+          <td id="inv-b-total-usd">—</td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="inv-sobrante" style="padding:6px 0;font-size:12px;color:var(--ok);display:none"></div>
+    <div id="inv-deficit" style="padding:6px 0;font-size:12px;color:var(--warn);display:none"></div>
+  </div>
+</div>
+
+</div><!-- /col der -->
+</div><!-- /main-grid -->
+</div><!-- /tab2-content -->
+
+</div><!-- /wrap -->
+
+<script>
+// ── bank configs ──────────────────────────────────────────
+const BANCOS = {
+  bna: {
+    nombre: 'Banco Nación',
+    tna: 6,
+    tna_hint: '— BNA con haberes',
+    tna_alt: 'Sin haberes BNA: TNA 12%',
+    apoyo_max: 75,
+    mon_max_uva: 260000,
+    prop_max_uva: 350000,
+    mul_ingresos: 4,
+    seg_inc: 0.0006,
+  },
+  bbva: {
+    nombre: 'BBVA',
+    tna: 7.5,
+    tna_hint: '— BBVA sueldo + seguro hogar',
+    tna_alt: 'Solo sueldo en BBVA: TNA 10.9%',
+    apoyo_max: 80,
+    mon_max_pesos: 201600000,
+    prop_max_uva: null,          // BBVA no publica límite de valor de propiedad
+    mul_ingresos: 4.8,
+    seg_inc: 0.0085,             // Seguro de Hogar Premier BBVA (~0.85% anual del valor)
+  },
+  icbc: {
+    nombre: 'ICBC',
+    tna: 6.9,
+    tna_hint: '— ICBC con acreditación de haberes',
+    tna_alt: 'Sin acreditación ICBC: TNA 9,9%',
+    apoyo_max: 75,
+    mon_max_pesos: 400000000,
+    prop_max_uva: null,
+    mul_ingresos: 4,
+    seg_inc: 0.0006,
+  },
+};
+// ── state ─────────────────────────────────────────────────
+let banco = BANCOS.bna;
+let bancoId = 'bna';
+let UVA = 1958.09, USD = 1400, TNA = 6;
+let curVV = 'usd', curMC = 'usd';
+let curBol = 'usd', curCumax = 'ars';
+let escriTotal = 0;
+// ── parse / format ────────────────────────────────────────
+function parseNum(s){
+  s = (s||'').trim().replace(/[$\s]/g,'');
+  if(!s) return 0;
+  // tiene coma → formato es-AR: puntos=miles, coma=decimal
+  if(s.includes(',')) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
+  // tiene punto: si los últimos dígitos tras el punto son exactamente 3 → separador de miles
+  if(s.includes('.')){
+    const after = s.split('.').pop();
+    if(after.length === 3) return parseFloat(s.replace(/\./g,'')) || 0;
+    return parseFloat(s) || 0;  // punto decimal (ej: 1958.09)
+  }
+  return parseFloat(s) || 0;
+}
+function fmt(n, d=0){ return isNaN(n) ? '0' : parseFloat(n.toFixed(d)).toLocaleString('es-AR'); }
+// ── bank selector ─────────────────────────────────────────
+function setBanco(id){
+  bancoId = id;
+  banco = BANCOS[id];
+  document.getElementById('bancoDrop').value = id;
+  document.getElementById('apoyoMax').textContent = banco.apoyo_max + '%';
+  document.getElementById('apoyoMaxInline').textContent = banco.apoyo_max + '%';
+  document.getElementById('formBancoNombre').textContent = banco.nombre;
+  document.getElementById('r-bh-detalle').textContent = 'Detalles del préstamo · ' + banco.nombre;
+  document.getElementById('inv-banco-nombre').textContent = banco.nombre;
+  onMkt();
+}
+// ── market ────────────────────────────────────────────────
+function onMkt(){
+  UVA = parseNum(document.getElementById('valUVA').value) || 1956.47;
+  USD = parseNum(document.getElementById('cotUSD').value) || 1400;
+  TNA = banco.tna;
+  updHints(); calcEscri(); updBolsillo(); calcularInverso();
+}
+// ── currency hints ────────────────────────────────────────
+function getARS(id, cur){ const v = parseNum(document.getElementById(id).value); return cur==='usd' ? v*USD : v; }
+function updHints(){
+  const vv = parseNum(document.getElementById('ValorVivienda').value);
+  const mc = parseNum(document.getElementById('Monto').value);
+  document.getElementById('h-vv').textContent = vv > 0 ? (curVV==='usd' ? `≈ $ ${fmt(vv*USD)} ARS` : `≈ USD ${fmt(vv/USD)}`) : '';
+  document.getElementById('h-mc').textContent = mc > 0 ? (curMC==='usd' ? `≈ $ ${fmt(mc*USD)} ARS` : `≈ USD ${fmt(mc/USD)}`) : '';
+  // apoyo máximo en monto real
+  const vvARS = curVV==='usd' ? vv*USD : vv;
+  const maxARS = vvARS * banco.apoyo_max / 100;
+  const apoyoEl = document.getElementById('apoyoMaxMonto');
+  if(vv > 0){
+    apoyoEl.textContent = curVV==='usd'
+      ? `máx USD ${fmt(vv * banco.apoyo_max / 100)} (≈ $ ${fmt(maxARS)} ARS)`
+      : `máx $ ${fmt(maxARS)} ARS (≈ USD ${fmt(maxARS/USD)})`;
+  } else {
+    apoyoEl.textContent = 'ingresá el valor de la vivienda';
+  }
+}
+function onAmt(f){
+  updHints();
+  if(f==='vv'){
+    const a = getARS('ValorVivienda', curVV);
+    if(a > 0){ document.getElementById('ValorEscri').value = fmt(a); calcEscri(); }
+  }
+  updBolsillo();
+}
+function setMontoMax(){
+  const vv = parseNum(document.getElementById('ValorVivienda').value);
+  if(!vv) return;
+  const maxVal = vv * banco.apoyo_max / 100;
+  // usa la misma moneda que el campo de vivienda
+  curMC = curVV;
+  document.getElementById('tmc-ars').classList.toggle('on', curMC==='ars');
+  document.getElementById('tmc-usd').classList.toggle('on', curMC==='usd');
+  document.getElementById('Monto').placeholder = curMC==='usd' ? 'USD 0' : '$ 0';
+  document.getElementById('Monto').value = fmt(maxVal);
+  onAmt('mc');
+}
+function setCur(f, c){
+  if(f==='vv'){
+    curVV=c;
+    document.getElementById('tvv-ars').classList.toggle('on', c==='ars');
+    document.getElementById('tvv-usd').classList.toggle('on', c==='usd');
+    document.getElementById('ValorVivienda').placeholder = c==='usd' ? 'USD 0' : '$ 0';
+  } else {
+    curMC=c;
+    document.getElementById('tmc-ars').classList.toggle('on', c==='ars');
+    document.getElementById('tmc-usd').classList.toggle('on', c==='usd');
+    document.getElementById('Monto').placeholder = c==='usd' ? 'USD 0' : '$ 0';
+  }
+  updHints();
+}
+// ── escrituración ─────────────────────────────────────────
+function calcEscri(){
+  const v = parseNum(document.getElementById('ValorEscri').value);
+  const el = document.getElementById('escriRes');
+  if(v <= 0){ el.innerHTML=''; escriTotal=0; updBolsillo(); return; }
+  const prov = document.getElementById('Provincia').value;
+  const prim = document.getElementById('PrimeraViv').checked;
+  const exento = prov==='caba' && prim && v < 226100000;
+  const inmo = v*0.03, inmoIva = inmo*0.21;
+  const escr = v*0.015, escrIva = escr*0.21;
+  let selRate, selNote;
+  if(exento){ selRate=0; selNote='(exento — 1ª vivienda CABA < $226.1M)'; }
+  else if(prov==='caba'){ selRate=1.75; selNote='(3.5% total, comprador paga 50%)'; }
+  else if(prov==='pba'){ selRate=1.0; selNote='(Ley 15.558/2026: 2% total, comprador paga 50%)'; }
+  else{ selRate=1.5; selNote='(estimado)'; }
+  const sellos = v*selRate/100;
+  // Registro de la Propiedad: PBA = 0.2% (2‰, Ley 15.558/2026); CABA = 0.7%
+  const regRate = prov==='pba' ? 0.002 : 0.007;
+  const regLabel = prov==='pba' ? 'Registro de la Propiedad PBA (0,2% — 2‰, Ley 15.558/2026)' : 'Registro de la Propiedad CABA (0,7%)';
+  const reg = v*regRate;
+  // Certificados: PBA tiene más trámites que CABA
+  const certRate = prov==='pba' ? 0.005 : 0.002;
+  const certLabel = prov==='pba' ? 'Certificados, informes y gastos PBA (~0,5%)' : 'Certificados y gastos CABA (0,2%)';
+  const cert = v*certRate;
+  const refTotal = (inmo+inmoIva)+(escr+escrIva)+sellos+reg+cert;
+  const refPct = refTotal/v*100;
+  const pctEl = document.getElementById('customPct');
+  if(pctEl && !pctEl._touched) pctEl.value = fmt(refPct, 2);
+  const invE = document.getElementById('inv-escriPct');
+  if(invE && !invE._touched) invE.value = fmt(refPct, 2);
+  const customPct = pctEl ? (parseNum(pctEl.value)||refPct) : refPct;
+  const customTotal = v*customPct/100;
+  escriTotal = customTotal;
+  updBolsillo();
+  const rows = [
+    { name:'Comisión inmobiliaria (3% + IVA 21%)', pct:'3,630', m:inmo+inmoIva, ex:false },
+    { name:'Honorarios escribano (1,5% + IVA 21%) — Ley 6925 PBA', pct:'1,815', m:escr+escrIva, ex:false },
+    { name:`Impuesto de sellos ${selNote}`, pct:selRate===0?'—':fmt(selRate,3)+'%', m:sellos, ex:exento },
+    { name:regLabel, pct:fmt(regRate*100,1), m:reg, ex:false },
+    { name:certLabel, pct:fmt(certRate*100,1), m:cert, ex:false },
+  ].map(r=>`<tr><td>${r.name}${r.ex?' <span class="exmt">EXENTO</span>':''}</td><td>${r.ex?'0%':r.pct}%</td><td>${r.ex?'<span class="exmt">$ 0</span>':'$ '+fmt(r.m)}</td></tr>`).join('');
+  el.innerHTML = `
+    <table class="et"><thead><tr><th>Concepto (referencia)</th><th>%</th><th>Monto ARS</th></tr></thead>
+    <tbody>${rows}<tr class="tr"><td>Subtotal referencia</td><td>${fmt(refPct,2)}%</td><td>$ ${fmt(refTotal)}</td></tr></tbody></table>
+    <div class="pct-box">
+      <label>% total parametrizable — ajustá según tu caso real</label>
+      <div class="pct-row">
+        <div class="irow">
+          <input type="text" id="customPct" value="${fmt(refPct,2)}" oninput="onCustomPct(this,${v})" style="width:80px;font-weight:700;color:var(--accent);border-color:var(--focus)">
+          <span style="color:var(--muted)">%</span>
+        </div>
+        <div class="pct-result">
+          Total escrituración:
+          <span class="v" id="customTotal">$ ${fmt(customTotal)}</span>
+          <span class="u" id="customTotalUSD">≈ USD ${fmt(customTotal/USD)}</span>
+        </div>
+      </div>
+    </div>`;
+}
+function onCustomPct(el, v){
+  el._touched = true;
+  const pct = parseNum(el.value)||0;
+  const total = v*pct/100;
+  escriTotal = total;
+  const t=document.getElementById('customTotal'), u=document.getElementById('customTotalUSD');
+  if(t) t.textContent='$ '+fmt(total);
+  if(u) u.textContent='≈ USD '+fmt(total/USD);
+  updBolsillo();
+}
+// ── de tu bolsillo ────────────────────────────────────────
+function updBolsillo(){
+  const vvARS = getARS('ValorVivienda', curVV);
+  const mcARS = getARS('Monto', curMC);
+  const dash = '—';
+  function set(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+  if(!vvARS){ ['b-anticipo-pct','b-anticipo-ars','b-anticipo-usd','b-escri-pct','b-escri-ars','b-escri-usd','b-total-pct','b-total-ars','b-total-usd'].forEach(id=>set(id,dash)); return; }
+  const anticipo = Math.max(vvARS-mcARS, 0);
+  const antiPct = anticipo/vvARS*100;
+  const escPct  = escriTotal/vvARS*100;
+  const total   = anticipo+escriTotal;
+  const totPct  = total/vvARS*100;
+  set('b-anticipo-pct', fmt(antiPct,1)+'%');
+  set('b-anticipo-ars', '$ '+fmt(anticipo));
+  set('b-anticipo-usd', 'USD '+fmt(anticipo/USD));
+  set('b-escri-pct',  escriTotal>0 ? fmt(escPct,1)+'%' : dash);
+  set('b-escri-ars',  escriTotal>0 ? '$ '+fmt(escriTotal) : dash);
+  set('b-escri-usd',  escriTotal>0 ? 'USD '+fmt(escriTotal/USD) : dash);
+  set('b-total-pct',  fmt(escriTotal>0?totPct:antiPct,1)+'%');
+  set('b-total-ars',  '$ '+fmt(escriTotal>0?total:anticipo));
+  set('b-total-usd',  'USD '+fmt((escriTotal>0?total:anticipo)/USD));
+}
+// ── BNA calc ──────────────────────────────────────────────
+function cuotaFr(cap,tem,n){ return cap*tem/(1-Math.pow(1+tem,-n)); }
+function segIncendio(propUVA){
+  return propUVA * banco.seg_inc / 12;
+}
+function IRR(vals, g){
+  const res=(v,d,r)=>{ let x=v[0]; for(let i=1;i<v.length;i++) x+=v[i]/Math.pow(r+1,(d[i]-d[0])/365); return x; };
+  const der=(v,d,r)=>{ let x=0; for(let i=1;i<v.length;i++){ let f=(d[i]-d[0])/365; x-=f*v[i]/Math.pow(r+1,f+1); } return x; };
+  const dates=vals.map((_,i)=>i*365);
+  let pos=false,neg=false; vals.forEach(v=>{ if(v>0)pos=true; if(v<0)neg=true; });
+  if(!pos||!neg) return g||0.005;
+  let r=g||0.005, iter=0;
+  do{ const nv=r-res(vals,dates,r)/der(vals,dates,r); const e=Math.abs(nv-r); r=nv; if(e<1e-10) break; }while(++iter<50);
+  return r;
+}
+function planDeCuotas(monUVA, propUVA, tem, nCuotas){
+  let cuotas=[], costos=[];
+  cuotas.push({sal:monUVA, cu:0, ct:-monUVA});
+  costos.push(-monUVA);
+  for(let n=1; n<=nCuotas; n++){
+    const sal = cuotas[n-1].sal;
+    const si = segIncendio(propUVA);
+    const cu = cuotaFr(monUVA, tem, nCuotas-(n-1)); // recompute for precision? No, use fixed cuota
+    const cuFija = cuotaFr(monUVA, tem, nCuotas);
+    const int = sal*tem, cap = cuFija-int;
+    const nsal = Math.max(sal-cap, 0);
+    cuotas.push({sal:nsal, cu:cuFija, ct:cuFija+si});
+    costos.push(cuFija+si);
+  }
+  const cft_tem = IRR(costos, tem);
+  const cft_tea = Math.ceil((Math.pow(1+cft_tem,12)-1)*10000)/10000;
+  return {cuotas, cft_tem:cft_tem*100, cft_tna:cft_tem*12*100, cft_tea:cft_tea*100};
+}
+// ── errors ────────────────────────────────────────────────
+function setE(id,m){ const e=document.getElementById('e-'+id); if(e) e.textContent=m; }
+function clrE(id){ const e=document.getElementById('e-'+id); if(e) e.textContent=''; }
+function clrAll(){ ['Plazo','ValorVivienda','Monto'].forEach(clrE); }
+// ── main calculate ────────────────────────────────────────
+function calcular(){
+  clrAll();
+  const vvARS = getARS('ValorVivienda', curVV);
+  const mcARS = getARS('Monto', curMC);
+  const plazo = parseInt(document.getElementById('Plazo').value)||0;
+  let ok=true;
+  if(!plazo){ setE('Plazo','Campo obligatorio'); ok=false; }
+  if(!vvARS){ setE('ValorVivienda','Campo obligatorio'); ok=false; }
+  if(!mcARS){ setE('Monto','Campo obligatorio'); ok=false; }
+  if(!ok) return;
+  const propUVA = vvARS/UVA, monUVA = mcARS/UVA;
+  const tem = TNA/12/100;
+  const apoyo = monUVA/propUVA*100;
+  const nCuotas = plazo*12;
+  // get bank limits
+  const monMaxUVA = banco.mon_max_pesos ? banco.mon_max_pesos/UVA : banco.mon_max_uva;
+  const propMaxUVA = banco.prop_max_uva;
+  // validations
+  if(monUVA > monMaxUVA){ setE('Monto',`Monto máximo $ ${fmt(monMaxUVA*UVA)} (${fmt(monMaxUVA)} UVAs)`); return; }
+  if(monUVA < 15000){ setE('Monto',`Monto mínimo 15.000 UVAs ($ ${fmt(15000*UVA)})`); return; }
+  if(monUVA > propUVA){ setE('Monto','El monto no puede superar el valor de la vivienda'); return; }
+  if(propMaxUVA && propUVA > propMaxUVA){ setE('ValorVivienda',`El valor no puede superar ${fmt(propMaxUVA)} UVAs ($ ${fmt(propMaxUVA*UVA)})`); return; }
+  if(apoyo > banco.apoyo_max){ setE('Monto',`${banco.nombre} financia hasta el ${banco.apoyo_max}% del valor — apoyo actual: ${fmt(apoyo,1)}%`); return; }
+  const plan = planDeCuotas(monUVA, propUVA, tem, nCuotas);
+  const cuUva = plan.cuotas[1].cu;
+  const cuPesos = cuUva*UVA, cuUSD = cuPesos/USD;
+  const incNec = cuPesos*banco.mul_ingresos;
+  const incMin = incNec*0.5;
+  document.getElementById('r-apoyo').textContent = fmt(apoyo,1)+'%';
+  document.getElementById('r-cuuva').textContent = fmt(cuUva,2);
+  document.getElementById('r-propuva').textContent = fmt(propUVA,2);
+  document.getElementById('r-montouva').textContent = fmt(monUVA,2);
+  document.getElementById('r-ingrnec').textContent = '$ '+fmt(incNec);
+  document.getElementById('r-ingrmin').textContent = '$ '+fmt(incMin);
+  document.getElementById('r-cupesos').textContent = '$ '+fmt(cuPesos);
+  document.getElementById('r-cuusd').textContent = '≈ USD '+fmt(cuUSD);
+  document.getElementById('r-uva').textContent = fmt(UVA,2);
+  document.getElementById('r-tna').textContent = fmt(TNA,2)+'%';
+  document.getElementById('r-tem').textContent = fmt(TNA/12,2)+'%';
+  document.getElementById('r-cfttem').textContent = fmt(plan.cft_tem,2)+'%';
+  document.getElementById('r-cfttna').textContent = fmt(plan.cft_tna,2)+'%';
+  document.getElementById('r-cfttea').textContent = fmt(plan.cft_tea,2)+'%';
+  document.getElementById('disc').textContent = `Simulación para ${banco.nombre} · TNA ${fmt(TNA,2)}% · hasta ${banco.apoyo_max}% del valor de la propiedad. (1) Cuota calculada suponiendo períodos de 30 días. (2) CFT incluye capital, intereses y seguro de incendio/hogar (${fmt(banco.seg_inc*100,2)}% anual del valor de la propiedad). (3) Eximición de IVA sobre intereses conforme RG AFIP 680/99.`;
+  document.getElementById('rs').classList.remove('hidden');
+}
+function resetForm(){
+  document.getElementById('Plazo').value='20';
+  document.getElementById('ValorVivienda').value='180.000';
+  document.getElementById('Monto').value='135.000';
+  ['h-vv','h-mc'].forEach(id=>document.getElementById(id).textContent='');
+  updHints();
+  clrAll();
+  const rs=document.getElementById('rs'); rs.classList.remove('show'); rs.classList.add('hidden');
+}
+// ── tab switching ─────────────────────────────────────────
+function showTab(n){
+  document.getElementById('tab1-content').classList.toggle('hidden', n!==1);
+  document.getElementById('tab2-content').classList.toggle('hidden', n!==2);
+  document.getElementById('t1').classList.toggle('on', n===1);
+  document.getElementById('t2').classList.toggle('on', n===2);
+  if(n===2) calcularInverso();
+}
+// ── tab 2 currency toggles ────────────────────────────────
+function setCurInv(f, c){
+  if(f==='bol'){
+    curBol=c;
+    document.getElementById('tbol-ars').classList.toggle('on', c==='ars');
+    document.getElementById('tbol-usd').classList.toggle('on', c==='usd');
+    document.getElementById('inv-bolsillo').placeholder = c==='usd' ? 'USD 0' : '$ 0';
+  } else {
+    curCumax=c;
+    document.getElementById('tcumax-ars').classList.toggle('on', c==='ars');
+    document.getElementById('tcumax-usd').classList.toggle('on', c==='usd');
+    document.getElementById('inv-cuotamax').placeholder = c==='usd' ? 'USD 0' : '$ 0';
+  }
+  calcularInverso();
+}
+// ── calculadora inversa ───────────────────────────────────
+function calcularInverso(){
+  const bolRaw   = parseNum(document.getElementById('inv-bolsillo').value);
+  const cuRaw    = parseNum(document.getElementById('inv-cuotamax').value);
+  const plazo    = parseInt(document.getElementById('inv-plazo').value) || 0;
+  const escriPct = parseNum(document.getElementById('inv-escriPct').value) || 7.1;
+
+  const bolsilloARS  = curBol   === 'usd' ? bolRaw * USD : bolRaw;
+  const cuotaMaxARS  = curCumax === 'usd' ? cuRaw  * USD : cuRaw;
+
+  // hints
+  const hb = document.getElementById('h-inv-bol');
+  const hc = document.getElementById('h-inv-cumax');
+  if(hb) hb.textContent = bolRaw>0 ? (curBol==='usd' ? `≈ $ ${fmt(bolRaw*USD)} ARS` : `≈ USD ${fmt(bolRaw/USD)}`) : '';
+  if(hc) hc.textContent = cuRaw>0  ? (curCumax==='usd' ? `≈ $ ${fmt(cuRaw*USD)} ARS` : `≈ USD ${fmt(cuRaw/USD)}`) : '';
+
+  const errEl    = document.getElementById('inv-error');
+  const badgeEl  = document.getElementById('inv-badge');
+  const sobrEl   = document.getElementById('inv-sobrante');
+  const defEl    = document.getElementById('inv-deficit');
+
+  function set(id, v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+  function clearAll(){
+    const dash='—';
+    ['inv-propARS','inv-propUSD','inv-propUVA','inv-monARS','inv-monUSD','inv-monUVA',
+     'inv-cuotaARS','inv-ingresos','inv-apoyo-pct',
+     'inv-b-anticipo-pct','inv-b-anticipo-ars','inv-b-anticipo-usd',
+     'inv-b-escri-pct','inv-b-escri-ars','inv-b-escri-usd',
+     'inv-b-total-pct','inv-b-total-ars','inv-b-total-usd'
+    ].forEach(id=>set(id,dash));
+    set('inv-cuotaUSD','');
+    if(badgeEl) badgeEl.innerHTML='';
+    if(sobrEl) sobrEl.style.display='none';
+    if(defEl)  defEl.style.display='none';
+  }
+
+  if(!bolsilloARS && !cuotaMaxARS){ clearAll(); if(errEl) errEl.textContent=''; return; }
+  if(!plazo){ clearAll(); if(errEl) errEl.textContent='Seleccioná el plazo para ver los resultados.'; return; }
+  if(errEl) errEl.textContent='';
+
+  const tem          = banco.tna / 12 / 100;
+  const n            = plazo * 12;
+  const factor       = tem / (1 - Math.pow(1+tem, -n));
+  const apoyo_frac   = banco.apoyo_max / 100;
+  const monMaxBanco  = banco.mon_max_pesos ? banco.mon_max_pesos/UVA : banco.mon_max_uva;
+
+  // R1 — cuota (iterative para seguro de incendio)
+  let monMaxUVA_cuota = Infinity;
+  if(cuotaMaxARS > 0){
+    let m = (cuotaMaxARS/UVA) / factor;
+    for(let i=0; i<5; i++){
+      const seg = (m/apoyo_frac) * banco.seg_inc / 12;
+      m = Math.max((cuotaMaxARS/UVA - seg) / factor, 0);
+    }
+    monMaxUVA_cuota = m;
+  }
+
+  // R2 — bolsillo
+  let monMaxUVA_bols = Infinity;
+  if(bolsilloARS > 0){
+    const pMaxBols = (bolsilloARS/UVA) / (1 - apoyo_frac + escriPct/100);
+    monMaxUVA_bols = Math.max(pMaxBols * apoyo_frac, 0);
+  }
+
+  const monMaxUVA  = Math.min(monMaxUVA_cuota, monMaxUVA_bols, monMaxBanco);
+  const propMaxUVA = monMaxUVA / apoyo_frac;
+
+  // Binding constraint
+  let binding;
+  if(monMaxBanco <= monMaxUVA_cuota && monMaxBanco <= monMaxUVA_bols){
+    binding = 'banco';
+  } else if(monMaxUVA_cuota <= monMaxUVA_bols){
+    binding = 'cuota';
+  } else {
+    binding = 'bolsillo';
+  }
+
+  // Minimum loan check
+  if(monMaxUVA < 15000){
+    clearAll();
+    if(errEl) errEl.textContent = `Con esos parámetros el crédito posible (${fmt(monMaxUVA,0)} UVAs) es menor al mínimo de 15.000 UVAs ($ ${fmt(15000*UVA)} / USD ${fmt(15000*UVA/USD)}). Aumentá el bolsillo o la cuota máxima.`;
+    return;
+  }
+
+  // Cuota resultante con seguro
+  const segMens = propMaxUVA * banco.seg_inc / 12;
+  const cuotaARS = (cuotaFr(monMaxUVA, tem, n) + segMens) * UVA;
+
+  // Bolsillo breakdown
+  const anticoARS    = propMaxUVA * (1-apoyo_frac) * UVA;
+  const escriMontoARS = propMaxUVA * UVA * escriPct / 100;
+  const totalBols    = anticoARS + escriMontoARS;
+  const totPct       = (1-apoyo_frac + escriPct/100) * 100;
+
+  // Badge
+  const badgeMap = {
+    cuota:    ['CUOTA','rbadge-cuota'],
+    bolsillo: ['BOLSILLO','rbadge-bolsillo'],
+    banco:    ['LÍMITE BANCO','rbadge-banco'],
+  };
+  const [bl,bc] = badgeMap[binding];
+  if(badgeEl) badgeEl.innerHTML = `<span class="rbadge ${bc}">${bl}</span>`;
+
+  // Fill results
+  set('inv-propARS', '$ '+fmt(propMaxUVA*UVA));
+  set('inv-propUSD', 'USD '+fmt(propMaxUVA*UVA/USD));
+  set('inv-propUVA', fmt(propMaxUVA,0)+' UVAs');
+  set('inv-monARS',  '$ '+fmt(monMaxUVA*UVA));
+  set('inv-monUSD',  'USD '+fmt(monMaxUVA*UVA/USD));
+  set('inv-monUVA',  fmt(monMaxUVA,0)+' UVAs');
+  set('inv-cuotaARS', '$ '+fmt(cuotaARS));
+  set('inv-cuotaUSD', '≈ USD '+fmt(cuotaARS/USD));
+  set('inv-ingresos', '$ '+fmt(cuotaARS*banco.mul_ingresos));
+
+  set('inv-apoyo-pct',       fmt((1-apoyo_frac)*100,1));
+  set('inv-b-anticipo-pct',  fmt((1-apoyo_frac)*100,1)+'%');
+  set('inv-b-anticipo-ars',  '$ '+fmt(anticoARS));
+  set('inv-b-anticipo-usd',  'USD '+fmt(anticoARS/USD));
+  set('inv-b-escri-pct',     fmt(escriPct,2)+'%');
+  set('inv-b-escri-ars',     '$ '+fmt(escriMontoARS));
+  set('inv-b-escri-usd',     'USD '+fmt(escriMontoARS/USD));
+  set('inv-b-total-pct',     fmt(totPct,1)+'%');
+  set('inv-b-total-ars',     '$ '+fmt(totalBols));
+  set('inv-b-total-usd',     'USD '+fmt(totalBols/USD));
+
+  // Sobrante / déficit
+  if(sobrEl) sobrEl.style.display='none';
+  if(defEl)  defEl.style.display='none';
+
+  if(binding==='cuota' && bolsilloARS>0){
+    const sobra = bolsilloARS - totalBols;
+    if(sobra > 0 && sobrEl){
+      sobrEl.textContent = `Te sobran $ ${fmt(sobra)} (USD ${fmt(sobra/USD)}) del bolsillo.`;
+      sobrEl.style.display='block';
+    }
+  } else if(binding==='bolsillo' && cuotaMaxARS>0 && monMaxUVA_cuota > monMaxUVA+100){
+    const propCuota = monMaxUVA_cuota / apoyo_frac;
+    const bolsNec   = propCuota * UVA * (1-apoyo_frac + escriPct/100);
+    const extra     = bolsNec - bolsilloARS;
+    if(extra>0 && defEl){
+      defEl.textContent = `Te faltan $ ${fmt(extra)} (USD ${fmt(extra/USD)}) de bolsillo para aprovechar tu cuota máxima.`;
+      defEl.style.display='block';
+    }
+  }
+}
+// ── init ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', ()=>{ onMkt(); onAmt('vv'); onAmt('mc'); calcular(); });
+</script>
+</body>
+</html>
