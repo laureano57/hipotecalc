@@ -537,6 +537,7 @@ const BANCOS = {
     tna_hint: '— BNA con haberes',
     tna_alt: 'Sin haberes BNA: TNA 12%',
     apoyo_max: 75,
+    plazo_max: 30,
     mon_max_uva: 260000,
     prop_max_uva: 350000,
     mul_ingresos: 4,
@@ -548,10 +549,12 @@ const BANCOS = {
     tna_hint: '— BBVA sueldo + seguro hogar',
     tna_alt: 'Solo sueldo en BBVA: TNA 10.9%',
     apoyo_max: 80,
+    plazo_max: 30,
     mon_max_pesos: 201600000,
     prop_max_uva: null,          // BBVA no publica límite de valor de propiedad
     mul_ingresos: 4.8,
-    seg_inc: 0.0085,             // Seguro de Hogar Premier BBVA (~0.85% anual del valor)
+    seg_inc: 0.01063,            // Seguro de Hogar Premier BBVA (~1.063% anual del monto del préstamo)
+    seg_inc_on_loan: true,       // BBVA calcula el seguro sobre el monto prestado, no el valor de la propiedad
   },
   icbc: {
     nombre: 'ICBC',
@@ -559,10 +562,12 @@ const BANCOS = {
     tna_hint: '— ICBC con acreditación de haberes',
     tna_alt: 'Sin acreditación ICBC: TNA 9,9%',
     apoyo_max: 75,
+    plazo_max: 20,               // Máximo 240 meses según letra chica
     mon_max_pesos: 400000000,
+    mon_min_pesos: 10000000,
     prop_max_uva: null,
     mul_ingresos: 4,
-    seg_inc: 0.0006,
+    seg_inc: 0,                  // CFTNA = TEA (seguro de incendios en pesos, no incluido en CFT)
   },
 };
 // ── state ─────────────────────────────────────────────────
@@ -597,6 +602,16 @@ function setBanco(id){
   document.getElementById('formBancoNombre').textContent = banco.nombre;
   document.getElementById('r-bh-detalle').textContent = 'Detalles del préstamo · ' + banco.nombre;
   document.getElementById('inv-banco-nombre').textContent = banco.nombre;
+  // Enforce plazo_max on both dropdowns
+  ['Plazo', 'inv-plazo'].forEach(function(selId){
+    const sel = document.getElementById(selId);
+    if(!sel) return;
+    Array.from(sel.options).forEach(function(opt){
+      const v = parseInt(opt.value);
+      if(v) opt.disabled = v > banco.plazo_max;
+    });
+    if(parseInt(sel.value) > banco.plazo_max) sel.value = banco.plazo_max;
+  });
   onMkt();
 }
 // ── market ────────────────────────────────────────────────
@@ -752,8 +767,9 @@ function updBolsillo(){
 }
 // ── BNA calc ──────────────────────────────────────────────
 function cuotaFr(cap,tem,n){ return cap*tem/(1-Math.pow(1+tem,-n)); }
-function segIncendio(propUVA){
-  return propUVA * banco.seg_inc / 12;
+function segIncendio(propUVA, monUVA){
+  const base = banco.seg_inc_on_loan ? monUVA : propUVA;
+  return base * banco.seg_inc / 12;
 }
 function IRR(vals, g){
   const res=(v,d,r)=>{ let x=v[0]; for(let i=1;i<v.length;i++) x+=v[i]/Math.pow(r+1,(d[i]-d[0])/365); return x; };
@@ -771,7 +787,7 @@ function planDeCuotas(monUVA, propUVA, tem, nCuotas){
   costos.push(-monUVA);
   for(let n=1; n<=nCuotas; n++){
     const sal = cuotas[n-1].sal;
-    const si = segIncendio(propUVA);
+    const si = segIncendio(propUVA, monUVA);
     const cu = cuotaFr(monUVA, tem, nCuotas-(n-1)); // recompute for precision? No, use fixed cuota
     const cuFija = cuotaFr(monUVA, tem, nCuotas);
     const int = sal*tem, cap = cuFija-int;
@@ -830,7 +846,8 @@ function calcular(){
   document.getElementById('r-cfttem').textContent = fmt(plan.cft_tem,2)+'%';
   document.getElementById('r-cfttna').textContent = fmt(plan.cft_tna,2)+'%';
   document.getElementById('r-cfttea').textContent = fmt(plan.cft_tea,2)+'%';
-  document.getElementById('disc').textContent = `Simulación para ${banco.nombre} · TNA ${fmt(TNA,2)}% · hasta ${banco.apoyo_max}% del valor de la propiedad. (1) Cuota calculada suponiendo períodos de 30 días. (2) CFT incluye capital, intereses y seguro de incendio/hogar (${fmt(banco.seg_inc*100,2)}% anual del valor de la propiedad). (3) Eximición de IVA sobre intereses conforme RG AFIP 680/99.`;
+  const segBase = banco.seg_inc_on_loan ? 'del monto prestado' : 'del valor de la propiedad';
+  document.getElementById('disc').textContent = `Simulación para ${banco.nombre} · TNA ${fmt(TNA,2)}% · hasta ${banco.apoyo_max}% del valor de la propiedad. (1) Cuota calculada suponiendo períodos de 30 días. (2) CFT incluye capital, intereses y seguro de incendio/hogar (${fmt(banco.seg_inc*100,3)}% anual ${segBase}). (3) Eximición de IVA sobre intereses conforme RG AFIP 680/99.`;
   document.getElementById('rs').classList.remove('hidden');
 }
 function resetForm(){
@@ -916,7 +933,8 @@ function calcularInverso(){
   if(cuotaMaxARS > 0){
     let m = (cuotaMaxARS/UVA) / factor;
     for(let i=0; i<5; i++){
-      const seg = (m/apoyo_frac) * banco.seg_inc / 12;
+      const segBase = banco.seg_inc_on_loan ? m : (m/apoyo_frac);
+      const seg = segBase * banco.seg_inc / 12;
       m = Math.max((cuotaMaxARS/UVA - seg) / factor, 0);
     }
     monMaxUVA_cuota = m;
@@ -950,7 +968,7 @@ function calcularInverso(){
   }
 
   // Cuota resultante con seguro
-  const segMens = propMaxUVA * banco.seg_inc / 12;
+  const segMens = segIncendio(propMaxUVA, monMaxUVA);
   const cuotaARS = (cuotaFr(monMaxUVA, tem, n) + segMens) * UVA;
 
   // Bolsillo breakdown
