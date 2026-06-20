@@ -144,6 +144,20 @@ select option{background:var(--card)}
   .escri-top-grid{grid-template-columns:1fr 1fr!important}
   .escri-top-grid>div:last-child{grid-column:span 2}
 }
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border);outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent);border:none;cursor:pointer}
+/* amortization table */
+.at-wrap{overflow:auto;max-height:480px;border:1px solid var(--border);border-radius:var(--rs)}
+.at{width:100%;border-collapse:collapse;font-size:12px}
+.at thead{position:sticky;top:0;z-index:1}
+.at th{background:var(--card);color:var(--muted);font-weight:600;padding:6px 10px;border-bottom:1px solid var(--border);text-align:right;white-space:nowrap}
+.at th:first-child{text-align:center;width:48px}
+.at td{padding:5px 10px;border-bottom:1px solid var(--border);color:var(--sec);text-align:right;font-variant-numeric:tabular-nums}
+.at td:first-child{text-align:center;color:var(--muted);font-weight:600}
+.at tbody tr:hover{background:rgba(88,166,255,.05)}
+.at tr.at-pre{background:rgba(63,185,80,.07)!important}
+.at tr.at-pre:hover{background:rgba(63,185,80,.14)!important}
 </style>
 </head>
 <body>
@@ -186,6 +200,8 @@ select option{background:var(--card)}
 <div class="tabs">
   <button class="tab on" id="t1" onclick="showTab(1)">Simular crédito</button>
   <button class="tab" id="t2" onclick="showTab(2)">¿Cuánto puedo gastar?</button>
+  <button class="tab" id="t3" onclick="showTab(3)">Salto del dólar</button>
+  <button class="tab" id="t4" onclick="showTab(4)">Amortización</button>
 </div>
 
 <div id="tab1-content">
@@ -526,6 +542,201 @@ select option{background:var(--card)}
 </div><!-- /main-grid -->
 </div><!-- /tab2-content -->
 
+<div id="tab3-content" class="hidden">
+
+<!-- aclaración de contexto -->
+<div class="card" style="border-left:3px solid var(--accent);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--muted);line-height:1.6">
+  <strong style="color:var(--txt);display:block;margin-bottom:4px">¿Para qué sirve esta pestaña?</strong>
+  En un crédito UVA, el banco aprueba y define el monto del préstamo expresado en UVAs. Sin embargo, entre ese momento y el día en que efectivamente acredita los fondos puede pasar un tiempo. Si en ese intervalo el tipo de cambio sube, el comprador recibe la misma cantidad de pesos de siempre (el valor en UVAs no cambia), pero esos pesos <strong style="color:var(--txt)">alcanzan para comprar menos dólares</strong> que los pactados originalmente. Esto puede generar un faltante para completar la operación inmobiliaria. Esta pestaña permite simular distintos escenarios de variación del dólar para estimar cuántos dólares adicionales habría que tener disponibles como respaldo.
+</div>
+
+<!-- sin simulación previa -->
+<div id="r3-empty" class="card" style="text-align:center;color:var(--muted);padding:40px 20px">
+  Primero simulá un crédito en la pestaña <strong style="color:var(--accent)">Simular crédito</strong> para ver el análisis de riesgo cambiario.
+</div>
+
+<!-- contenido cuando hay simulación -->
+<div id="r3-body" class="hidden">
+  <div class="main-grid">
+    <!-- valores de referencia -->
+    <div class="rbox">
+      <div class="bh">El préstamo en pesos (lo que varía)</div>
+      <ul>
+        <li>Cotización base<span id="r3-usd0"></span></li>
+        <li>Préstamo en ARS<span id="r3-monars"></span></li>
+        <li>Equivale a (al tipo base)<span id="r3-monusd"></span></li>
+      </ul>
+      <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">
+        Tu anticipo y los gastos de escrituración ya están en dólares, por lo que no se ven afectados por variaciones del tipo de cambio.
+      </div>
+    </div>
+
+    <!-- escenario puntual -->
+    <div class="card">
+      <div class="card-hdr">Escenario puntual</div>
+      <div class="card-body">
+        <div style="margin-bottom:16px">
+          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+            <span style="font-size:13px;color:var(--muted)">Si el dólar varía</span>
+            <span id="r3-delta-lbl" style="font-size:15px;font-weight:700;color:var(--accent)">0%</span>
+          </div>
+          <input type="range" id="r3-delta" min="-50" max="100" step="1" value="0" oninput="actualizarEscenarioPuntual()">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px">
+            <span>−50%</span><span>0%</span><span>+50%</span><span>+100%</span>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:6px 12px;font-size:13px;align-items:baseline">
+          <span style="color:var(--muted)">Nueva cotización</span>
+          <span id="r3-newusd" style="color:var(--txt);text-align:right">—</span>
+          <span style="color:var(--muted)">Los pesos del banco compran</span>
+          <span id="r3-monusd-new" style="color:var(--txt);text-align:right">—</span>
+          <span style="color:var(--muted)">Faltante a cubrir</span>
+          <span id="r3-extra" style="color:var(--warn);font-weight:700;text-align:right">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /tab3-content -->
+
+<!-- TAB 4: AMORTIZACIÓN -->
+<div id="tab4-content" class="hidden">
+
+  <!-- Cuadro de amortización -->
+  <div class="card">
+    <div class="card-hdr">Cuadro de amortización mes a mes</div>
+    <div class="card-body">
+      <div id="t4-nosim" style="color:var(--muted);text-align:center;padding:30px 0">
+        Primero realizá una simulación en <strong style="color:var(--txt)">Simular crédito</strong>.
+      </div>
+      <div id="t4-content" class="hidden">
+        <!-- Resumen -->
+        <div class="res-grid" id="t4-summary" style="margin-bottom:14px"></div>
+        <!-- Toggle moneda + nota -->
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <span style="font-size:12px;color:var(--muted)">Mostrar en:</span>
+          <div class="ctog">
+            <button id="tam-uva" class="on" onclick="setCurAmort('uva')">UVA</button>
+            <button id="tam-ars" onclick="setCurAmort('ars')">ARS</button>
+            <button id="tam-usd" onclick="setCurAmort('usd')">USD</button>
+          </div>
+          <span style="font-size:11px;color:var(--muted)" id="t4-note"></span>
+        </div>
+        <!-- Tabla -->
+        <div class="at-wrap">
+          <table class="at">
+            <thead>
+              <tr>
+                <th style="text-align:center">N°</th>
+                <th id="at-h-sal0" style="text-align:right">Saldo inicial</th>
+                <th id="at-h-int" style="text-align:right">Interés</th>
+                <th id="at-h-cap" style="text-align:right">Capital</th>
+                <th id="at-h-seg" style="text-align:right">Seguro</th>
+                <th id="at-h-cu" style="text-align:right">Cuota total</th>
+                <th id="at-h-adel" class="hidden" style="text-align:right">Adelanto</th>
+                <th id="at-h-acum" class="hidden" style="text-align:right">Acum. adelantado</th>
+                <th id="at-h-sal1" style="text-align:right">Saldo final</th>
+              </tr>
+            </thead>
+            <tbody id="t4-tbody"></tbody>
+          </table>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">
+          * Valores al UVA actual ($ <span id="t4-uva-val"></span>). Los importes en ARS/USD son un snapshot — en la práctica se ajustan mensualmente por CER/UVA.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simulador de pago anticipado -->
+  <div class="card">
+    <div class="card-hdr">Simulador de pago anticipado</div>
+    <div class="card-body">
+      <div id="t4-nosim2" style="color:var(--muted);text-align:center;padding:20px 0">
+        Primero realizá una simulación en <strong style="color:var(--txt)">Simular crédito</strong>.
+      </div>
+      <div id="t4-adelanto-form" class="hidden">
+        <!-- Fila agregar pago -->
+        <div style="display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <div class="fg" style="flex:0 0 110px">
+            <label>Mes</label>
+            <input type="text" id="a-mes" placeholder="ej: 12">
+          </div>
+          <div class="fg" style="flex:0 0 170px">
+            <label>Monto (USD)</label>
+            <div class="irow">
+              <span style="color:var(--muted);font-size:13px;flex-shrink:0">USD</span>
+              <input type="text" id="a-monto" placeholder="0" style="flex:1">
+            </div>
+          </div>
+          <button class="btn" onclick="agregarAdelanto()" style="padding:7px 16px;margin-bottom:1px">+ Agregar</button>
+          <span class="err" id="a-err" style="flex-basis:100%;margin-top:-8px"></span>
+        </div>
+        <!-- Lista de pagos -->
+        <div id="a-lista-wrap" class="hidden" style="margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Pagos anticipados registrados</div>
+          <table class="at" style="border:1px solid var(--border);border-radius:var(--rs);overflow:hidden">
+            <thead>
+              <tr>
+                <th style="text-align:center;width:56px">Mes</th>
+                <th style="text-align:right">Monto USD</th>
+                <th style="text-align:right">Equiv. ARS</th>
+                <th style="width:72px;text-align:center">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="a-lista-tbody"></tbody>
+          </table>
+        </div>
+        <!-- Resultados -->
+        <div id="t4-adelanto-result" class="hidden">
+          <!-- Resumen -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+              <div>
+                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Plazo original</div>
+                <div id="a-res-orig-m" style="font-size:16px;font-weight:700">—</div>
+                <div id="a-res-orig-a" style="font-size:11px;color:var(--muted)">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Nuevo plazo</div>
+                <div id="a-res-new-m" style="font-size:16px;font-weight:700;color:var(--ok)">—</div>
+                <div id="a-res-new-a" style="font-size:11px;color:var(--muted)">—</div>
+              </div>
+              <div>
+                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Ahorro total</div>
+                <div id="a-res-saved-m" style="font-size:16px;font-weight:700;color:var(--ok)">—</div>
+                <div id="a-res-saved-int" style="font-size:11px;color:var(--ok)">—</div>
+              </div>
+            </div>
+          </div>
+          <!-- Tabla de impacto acumulado -->
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Impacto de cada pago</div>
+          <div class="at-wrap">
+            <table class="at">
+              <thead>
+                <tr>
+                  <th style="text-align:center;width:36px">#</th>
+                  <th style="text-align:center">Mes</th>
+                  <th style="text-align:right">Adelanto</th>
+                  <th style="text-align:right">Saldo post-pago</th>
+                  <th style="text-align:right">Nuevo plazo</th>
+                  <th style="text-align:right">Meses ahorrados</th>
+                </tr>
+              </thead>
+              <tbody id="a-impact-tbody"></tbody>
+            </table>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">
+            * La cuota mensual no cambia. El saldo y los ahorros en intereses se expresan al UVA actual ($ <span id="a-uva-ref"></span>). Los pagos anticipados siempre reducen el plazo.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /tab4-content -->
+
 </div><!-- /wrap -->
 
 <script>
@@ -535,25 +746,24 @@ const BANCOS = {
     nombre: 'Banco Nación',
     tna: 6,
     tna_hint: '— BNA con haberes',
-    tna_alt: 'Sin haberes BNA: TNA 12%',
+    tna_alt: 'Segunda vivienda o propiedad > 210.000 UVAs: TNA 12%',
     apoyo_max: 75,
     plazo_max: 30,
-    mon_max_uva: 260000,
-    prop_max_uva: 350000,
+    mon_max_uva: 157500,         // límite para TNA 6% (vivienda única ≤ 210.000 UVAs)
+    prop_max_uva: 210000,        // umbral TNA 6%; por encima aplica TNA 12%
     mul_ingresos: 4,
     seg_inc: 0.0006,
   },
   bbva: {
     nombre: 'BBVA',
     tna: 7.5,
-    tna_hint: '— BBVA sueldo + seguro hogar',
-    tna_alt: 'Solo sueldo en BBVA: TNA 10.9%',
+    tna_hint: '— BBVA con acreditación de haberes + seguro hogar Premier',
     apoyo_max: 80,
     plazo_max: 30,
-    mon_max_pesos: 201600000,
-    prop_max_uva: null,          // BBVA no publica límite de valor de propiedad
+    mon_max_pesos: null,         // Sin tope fijo; sujeto a capacidad de pago y relación cuota/ingreso
+    prop_max_uva: null,
     mul_ingresos: 4.8,
-    seg_inc: 0.01063,            // Seguro de Hogar Premier BBVA (~1.063% anual del monto del préstamo)
+    seg_inc: 0.000898,           // Seguro de Hogar Premier BBVA (~0.09% anual del monto del préstamo)
     seg_inc_on_loan: true,       // BBVA calcula el seguro sobre el monto prestado, no el valor de la propiedad
   },
   icbc: {
@@ -576,7 +786,11 @@ let bancoId = 'bna';
 let UVA = 1958.09, USD = 1400, TNA = 6;
 let curVV = 'usd', curMC = 'usd';
 let curBol = 'usd', curCumax = 'ars';
+let curAmort = 'uva';
+let adelantos = [], adelantoSig = 0;
+const COMISION_ADELANTO = 0.04 * 1.21; // 4% + IVA 21% = 4,84%
 let escriTotal = 0;
+let lastSim = null;
 // ── parse / format ────────────────────────────────────────
 function parseNum(s){
   s = (s||'').trim().replace(/[$\s]/g,'');
@@ -847,8 +1061,12 @@ function calcular(){
   document.getElementById('r-cfttna').textContent = fmt(plan.cft_tna,2)+'%';
   document.getElementById('r-cfttea').textContent = fmt(plan.cft_tea,2)+'%';
   const segBase = banco.seg_inc_on_loan ? 'del monto prestado' : 'del valor de la propiedad';
-  document.getElementById('disc').textContent = `Simulación para ${banco.nombre} · TNA ${fmt(TNA,2)}% · hasta ${banco.apoyo_max}% del valor de la propiedad. (1) Cuota calculada suponiendo períodos de 30 días. (2) CFT incluye capital, intereses y seguro de incendio/hogar (${fmt(banco.seg_inc*100,3)}% anual ${segBase}). (3) Eximición de IVA sobre intereses conforme RG AFIP 680/99.`;
+  const topeoNote = bancoId==='bna' ? ' BNA ofrece opción de prima por topeo CVS (CFTEA 8,73%).' : '';
+  const discCft = `(2) CFT incluye capital, intereses y seguro de incendio/hogar (${fmt(banco.seg_inc*100,3)}% anual ${segBase}).${topeoNote}`;
+  document.getElementById('disc').textContent = `Simulación para ${banco.nombre} · TNA ${fmt(TNA,2)}% · hasta ${banco.apoyo_max}% del valor de la propiedad. (1) Cuota calculada suponiendo períodos de 30 días. ${discCft} (3) Eximición de IVA sobre intereses conforme RG AFIP 680/99.`;
+  lastSim = { propARS: propUVA*UVA, monARS: monUVA*UVA, USD: USD, escriTotalARS: escriTotal, plan, tem, propUVA, monUVA, nCuotas };
   document.getElementById('rs').classList.remove('hidden');
+  if(!document.getElementById('tab4-content').classList.contains('hidden')) renderAmortizacion();
 }
 function resetForm(){
   document.getElementById('Plazo').value='20';
@@ -861,11 +1079,13 @@ function resetForm(){
 }
 // ── tab switching ─────────────────────────────────────────
 function showTab(n){
-  document.getElementById('tab1-content').classList.toggle('hidden', n!==1);
-  document.getElementById('tab2-content').classList.toggle('hidden', n!==2);
-  document.getElementById('t1').classList.toggle('on', n===1);
-  document.getElementById('t2').classList.toggle('on', n===2);
+  [1,2,3,4].forEach(function(i){
+    document.getElementById('tab'+i+'-content').classList.toggle('hidden', n!==i);
+    document.getElementById('t'+i).classList.toggle('on', n===i);
+  });
   if(n===2) calcularInverso();
+  if(n===3) calcularRiesgoCambiario();
+  if(n===4) renderAmortizacion();
 }
 // ── tab 2 currency toggles ────────────────────────────────
 function setCurInv(f, c){
@@ -1028,6 +1248,378 @@ function calcularInverso(){
     }
   }
 }
+// ── tab 3: riesgo cambiario ───────────────────────────────
+function calcularRiesgoCambiario(){
+  const emptyEl = document.getElementById('r3-empty');
+  const bodyEl  = document.getElementById('r3-body');
+  if(!lastSim){
+    emptyEl.classList.remove('hidden');
+    bodyEl.classList.add('hidden');
+    return;
+  }
+  emptyEl.classList.add('hidden');
+  bodyEl.classList.remove('hidden');
+
+  const { monARS, USD: USD0 } = lastSim;
+  const monUSD = monARS / USD0;
+
+  function set(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+  set('r3-usd0',   '$ '+fmt(USD0,0)+' / USD');
+  set('r3-monars', '$ '+fmt(monARS,0));
+  set('r3-monusd', 'USD '+fmt(monUSD,0));
+
+  actualizarEscenarioPuntual();
+}
+
+function actualizarEscenarioPuntual(){
+  if(!lastSim) return;
+  const d = parseFloat(document.getElementById('r3-delta').value) || 0;
+  document.getElementById('r3-delta-lbl').textContent = (d>0?'+':'')+d+'%';
+  const delta   = d/100;
+  const monARS  = lastSim.monARS;
+  const USD0    = lastSim.USD;
+  const monUSD  = monARS / USD0;          // lo que compraba al tipo base
+  const newUSD  = USD0 * (1+delta);
+  const monUSDnew = monARS / newUSD;      // lo que compra al nuevo tipo
+  const faltante  = monUSD - monUSDnew;   // = monUSD * delta/(1+delta)
+  function set(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
+  set('r3-newusd',     '$ '+fmt(newUSD,0)+' / USD');
+  set('r3-monusd-new', 'USD '+fmt(monUSDnew,0));
+  set('r3-extra', faltante>0 ? '− USD '+fmt(faltante,0) : faltante<0 ? '+ USD '+fmt(-faltante,0) : 'Sin faltante');
+}
+// ── tab 4: amortización ───────────────────────────────────
+function renderAmortizacion(){
+  const nosim  = document.getElementById('t4-nosim');
+  const cont   = document.getElementById('t4-content');
+  const nosim2 = document.getElementById('t4-nosim2');
+  const aform  = document.getElementById('t4-adelanto-form');
+
+  if(!lastSim || !lastSim.plan){
+    nosim.classList.remove('hidden');
+    cont.classList.add('hidden');
+    nosim2.classList.remove('hidden');
+    aform.classList.add('hidden');
+    return;
+  }
+  nosim.classList.add('hidden');
+  cont.classList.remove('hidden');
+  nosim2.classList.add('hidden');
+  aform.classList.remove('hidden');
+
+  const c   = lastSim.plan.cuotas;
+  const tem = lastSim.tem;
+  const n   = c.length - 1;
+  const hasAdelantos = adelantos.length > 0;
+
+  const scale    = curAmort === 'uva' ? 1 : curAmort === 'ars' ? UVA : UVA / USD;
+  const prefix   = curAmort === 'uva' ? '' : curAmort === 'ars' ? '$ ' : 'USD ';
+  const decimals = curAmort === 'uva' ? 2 : 0;
+  const unit     = curAmort === 'uva' ? ' (UVA)' : curAmort === 'ars' ? ' (ARS)' : ' (USD)';
+
+  document.getElementById('t4-note').textContent = curAmort !== 'uva' ? `al UVA $ ${fmt(UVA,2)}` : '';
+  document.getElementById('t4-uva-val').textContent = fmt(UVA,2);
+
+  // update column headers and show/hide extra columns
+  const hdrs = {sal0:'Saldo inicial', int:'Interés', cap:'Capital', seg:'Seguro', cu:'Cuota total', sal1:'Saldo final'};
+  Object.keys(hdrs).forEach(k => {
+    const el = document.getElementById('at-h-'+k);
+    if(el) el.textContent = hdrs[k]+unit;
+  });
+  const hAdel = document.getElementById('at-h-adel');
+  const hAcum = document.getElementById('at-h-acum');
+  hAdel.classList.toggle('hidden', !hasAdelantos);
+  hAcum.classList.toggle('hidden', !hasAdelantos);
+  if(hasAdelantos){
+    hAdel.textContent = 'Adelanto'+unit;
+    hAcum.textContent = 'Acum. adelantado'+unit;
+  }
+
+  const monUVA0 = c[0].sal;
+  let totalInt, totalSeg, totalComision = 0, mesesActual, tableRows = '';
+
+  if(hasAdelantos){
+    const sched = buildScheduleConAdelantos();
+    totalInt = sched.totalIntUVA;
+    totalSeg = sched.totalSegUVA;
+    totalComision = sched.totalComisionUVA;
+    mesesActual = sched.mesesFinal;
+
+    tableRows = sched.rows.map(r => {
+      let adelContent = '—';
+      if(r.esAdelanto){
+        adelContent = `${prefix}${fmt(r.adelantoUVA*scale, decimals)}`;
+        if(r.enPrimerCuarto && r.comisionUVA > 0)
+          adelContent += `<br><span style="font-size:10px;color:var(--warn)">⚠ comisión: ${prefix}${fmt(r.comisionUVA*scale, decimals)}</span>`;
+      }
+      const acumContent = r.acumUVA > 0 ? `${prefix}${fmt(r.acumUVA*scale, decimals)}` : '—';
+      const cuotaContent = r.cuota > 0 ? `${prefix}${fmt(r.cuota*scale, decimals)}` : '—';
+      return `<tr${r.esAdelanto?' class="at-pre"':''}>
+        <td>${r.m}</td>
+        <td>${prefix}${fmt(r.salIni*scale, decimals)}</td>
+        <td>${prefix}${fmt(r.interes*scale, decimals)}</td>
+        <td>${prefix}${fmt(r.capital*scale, decimals)}</td>
+        <td>${prefix}${fmt(r.seguro*scale, decimals)}</td>
+        <td>${cuotaContent}</td>
+        <td>${adelContent}</td>
+        <td>${acumContent}</td>
+        <td>${prefix}${fmt(r.salFin*scale, decimals)}</td>
+      </tr>`;
+    }).join('');
+
+  } else {
+    totalInt = 0; totalSeg = 0; mesesActual = n;
+    for(let i=1; i<=n; i++){
+      totalInt += c[i-1].sal * tem;
+      totalSeg += c[i].ct - c[i].cu;
+    }
+    for(let i=1; i<=n; i++){
+      const salIni = c[i-1].sal;
+      const interes = salIni * tem;
+      const capital = c[i].cu - interes;
+      const seguro  = c[i].ct - c[i].cu;
+      const salFin  = c[i].sal;
+      tableRows += `<tr>
+        <td>${i}</td>
+        <td>${prefix}${fmt(salIni*scale, decimals)}</td>
+        <td>${prefix}${fmt(interes*scale, decimals)}</td>
+        <td>${prefix}${fmt(capital*scale, decimals)}</td>
+        <td>${prefix}${fmt(seguro*scale, decimals)}</td>
+        <td>${prefix}${fmt(c[i].ct*scale, decimals)}</td>
+        <td>${prefix}${fmt(salFin*scale, decimals)}</td>
+      </tr>`;
+    }
+  }
+
+  const plazoLabel = hasAdelantos
+    ? `Nuevo plazo: ${mesesActual} m / ${mesesLabel(mesesActual)}`
+    : `${n} meses / ${Math.round(n/12)} años`;
+  const comisionRow = (hasAdelantos && totalComision > 0)
+    ? `<li style="color:var(--warn)">Comisión cancelación anticipada<span style="color:var(--warn)">${prefix}${fmt(totalComision*scale, decimals)}</span></li>`
+    : '';
+
+  document.getElementById('t4-summary').innerHTML = `
+    <div class="rbox">
+      <div class="bh">Totales ${hasAdelantos ? 'con pagos anticipados' : 'del crédito'}</div>
+      <ul>
+        <li>Capital prestado<span>${prefix}${fmt(monUVA0*scale, decimals)}</span></li>
+        <li>Total intereses<span>${prefix}${fmt(totalInt*scale, decimals)}</span></li>
+        <li>Total seguro<span>${prefix}${fmt(totalSeg*scale, decimals)}</span></li>
+        ${comisionRow}
+      </ul>
+      <div class="tot"><span>Costo total</span><span class="tv">${prefix}${fmt((monUVA0+totalInt+totalSeg+totalComision)*scale, decimals)}</span></div>
+    </div>
+    <div class="rbox">
+      <div class="bh">Por cuota (${plazoLabel})</div>
+      <ul>
+        <li>Cuota capital + interés<span>${prefix}${fmt(c[1].cu*scale, decimals)}</span></li>
+        <li>Seguro mensual<span>${prefix}${fmt((c[1].ct-c[1].cu)*scale, decimals)}</span></li>
+        <li>Cuota total con seguro<span>${prefix}${fmt(c[1].ct*scale, decimals)}</span></li>
+      </ul>
+      <div class="tot"><span>Interés / capital</span><span class="tv">${fmt(totalInt/monUVA0*100,1)}%</span></div>
+    </div>`;
+
+  document.getElementById('t4-tbody').innerHTML = tableRows;
+}
+
+function setCurAmort(c){
+  curAmort = c;
+  ['uva','ars','usd'].forEach(x => document.getElementById('tam-'+x).classList.toggle('on', x===c));
+  renderAmortizacion();
+}
+
+
+// ── pagos anticipados (siempre reducen plazo) ─────────────
+
+function mesesLabel(m){
+  const a=Math.floor(m/12), mo=m%12;
+  return a>0 && mo>0 ? `${a}a ${mo}m` : a>0 ? `${a} años` : `${mo} meses`;
+}
+
+function estimarMesesRestantes(sal, cuotaUVA, tem){
+  let s=sal, cnt=0;
+  while(s>0.001 && cnt<1200){ const im=s*tem; s=Math.max(s-(cuotaUVA-im),0); cnt++; }
+  return cnt;
+}
+
+function buildScheduleConAdelantos(){
+  if(!lastSim||!lastSim.plan) return null;
+  const c=lastSim.plan.cuotas, tem=lastSim.tem, n=c.length-1;
+  const cuotaUVA=c[1].cu;
+  const segMens=c[1].ct-c[1].cu;
+  const threshold=Math.max(Math.ceil(n/4),6);
+
+  let intOrig=0;
+  for(let i=1;i<=n;i++) intOrig+=c[i-1].sal*tem;
+
+  const byMonth={};
+  adelantos.forEach(a=>{ byMonth[a.mes]=(byMonth[a.mes]||0)+a.usd; });
+
+  let sal=c[0].sal, m=0, intNuevo=0, totalSeg=0, totalComision=0, acumUVA=0;
+  const rows=[], events=[];
+
+  while(sal>0.001 && m<n*2){
+    m++;
+    const balStart=sal;
+    const enPrimerCuarto=m<=threshold;
+    let adelantoUVA=0, comisionUVA=0;
+
+    if(byMonth[m]){
+      adelantoUVA=Math.min(byMonth[m]*USD/UVA, sal);
+      sal=Math.max(sal-adelantoUVA,0);
+      acumUVA+=adelantoUVA;
+      if(enPrimerCuarto){
+        comisionUVA=adelantoUVA*COMISION_ADELANTO;
+        totalComision+=comisionUVA;
+      }
+      const remM=estimarMesesRestantes(sal,cuotaUVA,tem);
+      events.push({mes:m, usd:byMonth[m], extraUVA:adelantoUVA, comisionUVA,
+                   saldoPost:sal, plazoTotal:m-1+remM, enPrimerCuarto});
+      if(sal<=0.001){
+        rows.push({m, salIni:balStart, interes:0, capital:0, seguro:0, cuota:0, salFin:0,
+                   adelantoUVA, comisionUVA, acumUVA, esAdelanto:true, enPrimerCuarto});
+        break;
+      }
+    }
+
+    const interes=sal*tem;
+    const capital=cuotaUVA-interes;
+    const salFin=Math.max(sal-capital,0);
+    intNuevo+=interes;
+    totalSeg+=segMens;
+    sal=salFin;
+
+    rows.push({m, salIni:balStart, interes, capital, seguro:segMens, cuota:cuotaUVA,
+               salFin, adelantoUVA, comisionUVA, acumUVA,
+               esAdelanto:adelantoUVA>0, enPrimerCuarto});
+  }
+
+  return {rows, events, totalIntUVA:intNuevo, totalSegUVA:totalSeg,
+          totalComisionUVA:totalComision, mesesFinal:m, mesesAhorrados:n-m,
+          intOrig, intAhorro:intOrig-intNuevo, cuotaUVA, n, monUVA0:c[0].sal};
+}
+
+function simularAdelantos(){
+  if(!lastSim||!lastSim.plan||adelantos.length===0) return null;
+  return buildScheduleConAdelantos();
+}
+
+function renderAdelantosLista(){
+  const tbody=document.getElementById('a-lista-tbody');
+  const wrap=document.getElementById('a-lista-wrap');
+  if(adelantos.length===0){ wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  const sorted=[...adelantos].sort((a,b)=>a.mes-b.mes);
+  tbody.innerHTML=sorted.map(a=>`
+    <tr>
+      <td style="text-align:center;font-weight:700">${a.mes}</td>
+      <td style="text-align:right">USD ${fmt(a.usd)}</td>
+      <td style="text-align:right;color:var(--muted)">$ ${fmt(a.usd*USD)}</td>
+      <td style="text-align:center">
+        <button class="btn-s" onclick="editarAdelanto(${a.id})" style="padding:2px 8px;font-size:11px;margin-right:3px">✎</button>
+        <button class="btn-s" onclick="eliminarAdelanto(${a.id})" style="padding:2px 8px;font-size:11px;color:var(--err);border-color:var(--err)">✕</button>
+      </td>
+    </tr>`).join('');
+}
+
+function renderAdelantosResultado(){
+  const res=buildScheduleConAdelantos();
+  const el=document.getElementById('t4-adelanto-result');
+  if(!res||!res.events||res.events.length===0){ el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+
+  const {events,mesesFinal,n,intAhorro,mesesAhorrados,totalComisionUVA}=res;
+  const fU=v=>'USD '+fmt(v*UVA/USD);
+  const hasComision=totalComisionUVA>0;
+  const intAhorroNeto=intAhorro-totalComisionUVA;
+  const anyPrimerCuarto=events.some(e=>e.enPrimerCuarto);
+
+  el.innerHTML=`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Plazo original</div>
+          <div style="font-size:16px;font-weight:700">${n} meses</div>
+          <div style="font-size:11px;color:var(--muted)">${mesesLabel(n)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Nuevo plazo</div>
+          <div style="font-size:16px;font-weight:700;color:var(--ok)">${mesesFinal} meses</div>
+          <div style="font-size:11px;color:var(--muted)">${mesesLabel(mesesFinal)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Ahorro total</div>
+          <div style="font-size:16px;font-weight:700;color:var(--ok)">${mesesAhorrados>0?`−${mesesAhorrados} meses`:'Sin cambio'}</div>
+          <div style="font-size:11px;color:var(--ok)">${mesesAhorrados>0?`${fU(intAhorroNeto)} en intereses${hasComision?' (neto)':''}`:''}</div>
+          ${hasComision?`<div style="font-size:10px;color:var(--warn);margin-top:2px">comisión pagada: ${fU(totalComisionUVA)}</div>`:''}
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Impacto de cada pago</div>
+    <div class="at-wrap">
+      <table class="at">
+        <thead>
+          <tr>
+            <th style="text-align:center;width:36px">#</th>
+            <th style="text-align:center">Mes</th>
+            <th>Adelanto</th>
+            <th>Saldo post-pago</th>
+            <th>Nuevo plazo</th>
+            <th>Meses ahorrados</th>
+            ${anyPrimerCuarto?'<th style="color:var(--warn)">Comisión</th>':''}
+          </tr>
+        </thead>
+        <tbody>
+          ${events.map((ev,i)=>`
+            <tr>
+              <td>${i+1}</td>
+              <td>${ev.mes}</td>
+              <td>USD ${fmt(ev.usd)}</td>
+              <td>${fU(ev.saldoPost)}<br><span style="color:var(--muted);font-size:10px">${fmt(ev.saldoPost,0)} UVAs</span></td>
+              <td style="color:var(--ok)">${ev.plazoTotal} m<br><span style="font-size:10px">${mesesLabel(ev.plazoTotal)}</span></td>
+              <td style="color:var(--ok)">−${n-ev.plazoTotal} m</td>
+              ${anyPrimerCuarto?`<td style="color:var(--warn)">${ev.comisionUVA>0?fU(ev.comisionUVA):'—'}</td>`:''}
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">
+      * La cuota mensual no cambia. Los valores se expresan al UVA actual ($ ${fmt(UVA,2)}). Los pagos anticipados siempre reducen el plazo.
+    </div>`;
+}
+
+function agregarAdelanto(){
+  const errEl=document.getElementById('a-err');
+  errEl.textContent='';
+  if(!lastSim||!lastSim.plan){ errEl.textContent='Primero simulá un crédito.'; return; }
+  const n=lastSim.plan.cuotas.length-1;
+  const mes=Math.round(parseNum(document.getElementById('a-mes').value));
+  const usd=parseNum(document.getElementById('a-monto').value);
+  if(!mes||mes<1||mes>n){ errEl.textContent=`Mes inválido (1–${n})`; return; }
+  if(!usd||usd<=0){ errEl.textContent='Ingresá un monto en USD mayor a 0'; return; }
+  adelantos.push({id:++adelantoSig, mes, usd});
+  document.getElementById('a-mes').value='';
+  document.getElementById('a-monto').value='';
+  renderAdelantosLista();
+  renderAdelantosResultado();
+  renderAmortizacion();
+}
+
+function eliminarAdelanto(id){
+  adelantos=adelantos.filter(a=>a.id!==id);
+  renderAdelantosLista();
+  renderAdelantosResultado();
+  renderAmortizacion();
+}
+
+function editarAdelanto(id){
+  const a=adelantos.find(x=>x.id===id);
+  if(!a) return;
+  document.getElementById('a-mes').value=a.mes;
+  document.getElementById('a-monto').value=a.usd;
+  eliminarAdelanto(id);
+  document.getElementById('a-mes').focus();
+}
+
 // ── init ──────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', ()=>{ onMkt(); onAmt('vv'); onAmt('mc'); calcular(); });
 </script>
