@@ -143,7 +143,7 @@ select option{background:var(--card)}
   .form-row-main .fg{min-width:0!important}
   .form-row-main .btn{margin-top:0!important;width:100%;text-align:center}
   .escri-top-grid{grid-template-columns:1fr 1fr!important}
-  .escri-top-grid>div:last-child{grid-column:span 2}
+  .escri-top-grid>div:first-child{grid-column:span 2}
 }
 input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:4px;border-radius:2px;background:var(--border);outline:none;cursor:pointer}
 input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);cursor:pointer}
@@ -182,7 +182,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
       <label>UVA</label>
       <div class="hdr-mkt-irow">
         <span>$</span>
-        <input type="text" id="valUVA" value="1958.09" oninput="onMkt()">
+        <input type="text" id="valUVA" value="2041.81" oninput="onMkt()">
       </div>
     </div>
     <div class="hdr-mkt-sep"></div>
@@ -190,7 +190,15 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
       <label>USD / ARS</label>
       <div class="hdr-mkt-irow">
         <span>$</span>
-        <input type="text" id="cotUSD" value="1400" oninput="onMkt()">
+        <input type="text" id="cotUSD" value="1500" oninput="onMkt()">
+      </div>
+    </div>
+    <div class="hdr-mkt-sep"></div>
+    <div class="hdr-mkt-field">
+      <label>&nbsp;</label>
+      <div style="display:flex;align-items:center;gap:6px">
+        <button type="button" id="mktRefreshBtn" onclick="fetchMarketDefaults()" title="Actualizar UVA (BCRA) y USD oficial (DolarAPI)" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);color:var(--muted);padding:5px 9px;font-size:13px;cursor:pointer;line-height:1">↻</button>
+        <span id="mktStatus" class="hint" style="font-size:10px;white-space:nowrap"></span>
       </div>
     </div>
   </div>
@@ -326,7 +334,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
   </div>
   <div id="escriBody">
     <div class="card-body">
-      <div class="escri-top-grid" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;margin-bottom:12px">
+      <div class="escri-top-grid" style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:end;margin-bottom:12px">
         <div class="fg">
           <label>Provincia</label>
           <select id="Provincia" onchange="calcEscri()">
@@ -335,12 +343,9 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <option value="otra">Otra provincia (estimado)</option>
           </select>
         </div>
-        <div class="fg">
-          <label>Valor del inmueble</label>
-          <div class="irow">
-            <span style="color:var(--muted)">$</span>
-            <input type="text" id="ValorEscri" placeholder="0" oninput="calcEscri()">
-          </div>
+        <div class="fg" style="max-width:90px">
+          <label>Comisión %</label>
+          <input type="text" id="ComisionPct" value="3" inputmode="decimal" oninput="calcEscri()" style="text-align:right">
         </div>
         <div class="fg" style="padding-bottom:2px">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--sec);white-space:nowrap">
@@ -784,7 +789,7 @@ const BANCOS = {
 // ── state ─────────────────────────────────────────────────
 let banco = BANCOS.bna;
 let bancoId = 'bna';
-let UVA = 1958.09, USD = 1400, TNA = 6;
+let UVA = 2041.81, USD = 1500, TNA = 6; // fallback si fallan las APIs de BCRA/DolarAPI (ver fetchMarketDefaults)
 let curVV = 'usd', curMC = 'usd';
 let curBol = 'usd', curCumax = 'ars';
 let curAmort = 'uva';
@@ -831,10 +836,50 @@ function setBanco(id){
 }
 // ── market ────────────────────────────────────────────────
 function onMkt(){
-  UVA = parseNum(document.getElementById('valUVA').value) || 1956.47;
-  USD = parseNum(document.getElementById('cotUSD').value) || 1400;
+  UVA = parseNum(document.getElementById('valUVA').value) || 2041.81;
+  USD = parseNum(document.getElementById('cotUSD').value) || 1500;
   TNA = banco.tna;
   updHints(); calcEscri(); updBolsillo(); calcularInverso();
+}
+// ── auto-fetch UVA (BCRA) y dólar oficial (DolarAPI) ───────
+async function fetchMarketDefaults(){
+  const uvaEl = document.getElementById('valUVA');
+  const usdEl = document.getElementById('cotUSD');
+  const statusEl = document.getElementById('mktStatus');
+  const btn = document.getElementById('mktRefreshBtn');
+  if(btn) btn.disabled = true;
+  if(statusEl) statusEl.textContent = 'actualizando…';
+  const isoDate = d => d.toISOString().slice(0,10);
+  const hasta = isoDate(new Date());
+  const desdeD = new Date(); desdeD.setDate(desdeD.getDate()-15);
+  const desde = isoDate(desdeD);
+
+  const [uvaRes, usdRes] = await Promise.allSettled([
+    fetch(`https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/31?desde=${desde}&hasta=${hasta}`).then(r=>r.json()),
+    fetch('https://dolarapi.com/v1/dolares/oficial').then(r=>r.json()),
+  ]);
+
+  let uvaOk = false, usdOk = false;
+  if(uvaRes.status==='fulfilled'){
+    const detalle = uvaRes.value?.results?.[0]?.detalle;
+    const valor = detalle && detalle[0] && Number(detalle[0].valor);
+    if(valor > 0){ uvaEl.value = fmt(valor, 2); uvaOk = true; }
+  }
+  if(!uvaOk) console.warn('No se pudo actualizar la UVA desde BCRA', uvaRes.reason);
+
+  if(usdRes.status==='fulfilled'){
+    const venta = Number(usdRes.value?.venta);
+    if(venta > 0){ usdEl.value = fmt(venta, 2); usdOk = true; }
+  }
+  if(!usdOk) console.warn('No se pudo actualizar el dólar oficial desde DolarAPI', usdRes.reason);
+
+  onMkt();
+  if(btn) btn.disabled = false;
+  if(statusEl){
+    const now = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+    statusEl.textContent = uvaOk && usdOk ? `act. ${now} hs`
+      : (uvaOk || usdOk) ? `act. parcial ${now} hs` : 'sin conexión — valores manuales';
+  }
 }
 // ── currency hints ────────────────────────────────────────
 function getARS(id, cur){ const v = parseNum(document.getElementById(id).value); return cur==='usd' ? v*USD : v; }
@@ -857,10 +902,7 @@ function updHints(){
 }
 function onAmt(f){
   updHints();
-  if(f==='vv'){
-    const a = getARS('ValorVivienda', curVV);
-    if(a > 0){ document.getElementById('ValorEscri').value = fmt(a); calcEscri(); }
-  }
+  if(f==='vv') calcEscri();
   updBolsillo();
 }
 function setMontoMax(){
@@ -888,16 +930,18 @@ function setCur(f, c){
     document.getElementById('Monto').placeholder = c==='usd' ? 'USD 0' : '$ 0';
   }
   updHints();
+  if(f==='vv') calcEscri();
 }
 // ── escrituración ─────────────────────────────────────────
 function calcEscri(){
-  const v = parseNum(document.getElementById('ValorEscri').value);
+  const v = getARS('ValorVivienda', curVV);
   const el = document.getElementById('escriRes');
   if(v <= 0){ el.innerHTML=''; escriTotal=0; updBolsillo(); return; }
   const prov = document.getElementById('Provincia').value;
   const prim = document.getElementById('PrimeraViv').checked;
   const exento = prov==='caba' && prim && v < 226100000;
-  const inmo = v*0.03, inmoIva = inmo*0.21;
+  const comisionPct = parseNum(document.getElementById('ComisionPct').value) || 3;
+  const inmo = v*comisionPct/100, inmoIva = inmo*0.21;
   const escr = v*0.015, escrIva = escr*0.21;
   let selRate, selNote;
   if(exento){ selRate=0; selNote='(exento — 1ª vivienda CABA < $226.1M)'; }
@@ -924,7 +968,7 @@ function calcEscri(){
   escriTotal = customTotal;
   updBolsillo();
   const rows = [
-    { name:'Comisión inmobiliaria (3% + IVA 21%)', pct:'3,630', m:inmo+inmoIva, ex:false },
+    { name:`Comisión inmobiliaria (${fmt(comisionPct,2)}% + IVA 21%)`, pct:fmt(comisionPct*1.21,3), m:inmo+inmoIva, ex:false },
     { name:'Honorarios escribano (1,5% + IVA 21%) — Ley 6925 PBA', pct:'1,815', m:escr+escrIva, ex:false },
     { name:`Impuesto de sellos ${selNote}`, pct:selRate===0?'—':fmt(selRate,3)+'%', m:sellos, ex:exento },
     { name:regLabel, pct:fmt(regRate*100,1), m:reg, ex:false },
@@ -1622,7 +1666,7 @@ function editarAdelanto(id){
 }
 
 // ── init ──────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', ()=>{ onMkt(); onAmt('vv'); onAmt('mc'); calcular(); });
+document.addEventListener('DOMContentLoaded', ()=>{ onMkt(); onAmt('vv'); onAmt('mc'); calcular(); fetchMarketDefaults(); });
 </script>
 </body>
 </html>
