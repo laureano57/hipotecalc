@@ -65,6 +65,7 @@ select option{background:var(--card)}
 .btn-s:hover{background:var(--border)}
 /* results */
 .res-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+@media(min-width:601px){#rs .res-grid{grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr)}}
 .rbox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
 .rbox .bh{background:var(--hdr-bg);color:var(--hdr-txt);padding:8px 14px;font-size:12px;font-weight:600;border-bottom:1px solid var(--border)}
 .rbox ul{list-style:none;padding:8px 14px}
@@ -124,7 +125,7 @@ select option{background:var(--card)}
 @media(max-width:600px){
   .app-hdr{flex-direction:column;align-items:stretch;gap:8px;padding:10px 12px}
   .app-hdr p{display:none}
-  .hdr-mkt{margin-left:0;gap:8px;justify-content:space-between}
+  .hdr-mkt{margin-left:0;gap:8px;justify-content:flex-start;flex-wrap:wrap}
   .hdr-mkt-sep{display:none}
   .hdr-mkt-irow input{width:55px;font-size:13px}
   .hdr-mkt-field select{font-size:12px}
@@ -140,7 +141,13 @@ select option{background:var(--card)}
   .et th,.et td{padding:5px 7px}
   .et td:first-child{word-break:break-word}
   .form-row-main{flex-direction:column!important;gap:8px!important}
-  .form-row-main .fg{min-width:0!important}
+  .form-row-main .fg{min-width:0!important;width:100%}
+  .main-grid,.grid2,.res-grid{min-width:0;grid-template-columns:minmax(0,1fr)}
+  .main-grid>*,.fg,.irow input{min-width:0}
+  .hint{overflow-wrap:anywhere}
+  .rbox ul li,.rbox .tot{flex-wrap:wrap;gap:6px}
+  .et{table-layout:fixed}
+  .et td,.et th{overflow-wrap:anywhere}
   .form-row-main .btn{margin-top:0!important;width:100%;text-align:center}
   .escri-top-grid{grid-template-columns:1fr 1fr!important}
   .escri-top-grid>div:first-child{grid-column:span 2}
@@ -182,22 +189,22 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
       <label>UVA</label>
       <div class="hdr-mkt-irow">
         <span>$</span>
-        <input type="text" id="valUVA" value="2041.81" oninput="onMkt()">
+        <input type="text" id="valUVA" value="2150,53" oninput="markMarketEdit()">
       </div>
     </div>
     <div class="hdr-mkt-sep"></div>
     <div class="hdr-mkt-field">
-      <label>USD / ARS</label>
+      <label>USD / ARS · operation</label>
       <div class="hdr-mkt-irow">
         <span>$</span>
-        <input type="text" id="cotUSD" value="1500" oninput="onMkt()">
+        <input type="text" id="cotUSD" value="1535" oninput="markMarketEdit()">
       </div>
     </div>
     <div class="hdr-mkt-sep"></div>
     <div class="hdr-mkt-field">
       <label>&nbsp;</label>
       <div style="display:flex;align-items:center;gap:6px">
-        <button type="button" id="mktRefreshBtn" onclick="fetchMarketDefaults()" title="Actualizar UVA (BCRA) y USD oficial (DolarAPI)" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);color:var(--muted);padding:5px 9px;font-size:13px;cursor:pointer;line-height:1">↻</button>
+        <button type="button" id="mktRefreshBtn" onclick="fetchMarketDefaults(true)" title="Actualizar UVA (BCRA) y USD oficial (DolarAPI)" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--rs);color:var(--muted);padding:5px 9px;font-size:13px;cursor:pointer;line-height:1">↻</button>
         <span id="mktStatus" class="hint" style="font-size:10px;white-space:nowrap"></span>
       </div>
     </div>
@@ -230,11 +237,11 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
     <div class="grid2" style="margin-bottom:10px">
       <div class="fg">
         <label>Plazo en años</label>
-        <select id="Plazo">
+        <select id="Plazo" onchange="refreshSimulation()">
           <option value="">Seleccioná una opción</option>
           <option value="5">5</option><option value="10">10</option>
-          <option value="15">15</option><option value="20" selected>20</option>
-          <option value="25">25</option><option value="30">30</option>
+          <option value="15">15</option><option value="20">20</option>
+          <option value="25">25</option><option value="30" selected>30</option>
         </select>
         <span class="err" id="e-Plazo"></span>
       </div>
@@ -247,6 +254,23 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
         </div>
       </div>
     </div>
+    <details style="margin-bottom:12px">
+      <summary style="cursor:pointer;color:var(--accent);margin-bottom:10px">Aprobación BNA y supuestos de pago</summary>
+      <div class="grid2">
+        <div class="fg"><label>TNA aprobada (%) — opcional</label><input id="approvedTNA" placeholder="Referencia vigente: 6,7%" oninput="refreshSimulation()"><span class="hint" id="rateHint"></span></div>
+        <div class="fg"><label>Tasación (USD) — opcional</label><input id="appraisalUSD" placeholder="Se supone el precio de compra" oninput="refreshSimulation()"></div>
+        <div class="fg"><label>Destino de la vivienda</label><select id="housingUse" onchange="onHousingUse()"><option value="primary">Vivienda única y de ocupación permanente</option><option value="secondary">Segunda vivienda</option></select></div>
+        <div class="fg"><label><input type="checkbox" id="salaryAccount" checked onchange="refreshSimulation()"> Cobro de haberes en el banco seleccionado</label><label><input type="checkbox" id="hasCodebt" onchange="refreshSimulation()"> Incluir codeudores elegibles</label><label><input type="checkbox" id="cvsCover" onchange="refreshSimulation()"> Prima BNA para tope CVS</label></div>
+        <div class="fg"><label>Tasa anual del seguro de incendio (%)</label><input id="insurancePct" value="0,06" oninput="refreshSimulation()"><span class="hint">Referencia del simulador BNA; reemplazala por la cotización de la póliza.</span></div>
+        <div class="fg"><label>Valor de reconstrucción (ARS) — opcional</label><input id="reconstructionARS" placeholder="Precio de compra usado como estimación" oninput="refreshSimulation()"><span class="hint">El seguro excluye el terreno. Ingresá el valor asegurado.</span></div>
+        <div class="fg"><label>Frecuencia de pago del seguro</label><select id="insuranceTiming" onchange="refreshSimulation()"><option value="annual">Cargo anual: meses 1, 13, 25…</option><option value="monthly">Pago mensual</option></select></div>
+        <div class="fg"><label>Seguro mensual confirmado (ARS) — opcional</label><input id="insuranceMonthlyARS" placeholder="Reemplaza la tasa anual" oninput="refreshSimulation()"></div>
+        <div class="fg"><label>Otros productos mensuales obligatorios (ARS)</label><input id="monthlyProductsARS" value="0" oninput="refreshSimulation()"><span class="hint">Por ejemplo, seguros de vida o auto obligatorios, o cargos de la cuenta.</span></div>
+        <div class="fg"><label>Comisión por cancelación anticipada (%)</label><input id="prepaymentPct" value="4" oninput="refreshSimulation()"><label><input type="checkbox" id="prepaymentVAT" onchange="refreshSimulation()"> Agregar IVA del 21% si corresponde al presupuesto</label><span class="hint">BNA publica un 4%; el IVA debe coincidir con tu contrato.</span></div>
+        <div class="fg"><label>Fecha de desembolso del préstamo — opcional</label><input type="date" id="loanDate" onchange="refreshSimulation()"><span class="hint">Se usa para determinar cuándo deja de aplicarse la comisión por cancelación anticipada.</span></div>
+        <div class="fg"><label>Modalidad de cancelación anticipada parcial</label><select id="prepaymentStrategy" onchange="refreshSimulation()"><option value="term">Mantener la cuota de capital e interés; reducir el plazo</option><option value="payment">Mantener el vencimiento original; reducir la cuota</option></select><span class="hint">Supuesto de simulación; confirmá esta opción con BNA.</span></div>
+      </div>
+    </details>
     <div class="form-row-main" style="display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap">
       <div class="fg" style="flex:1;min-width:160px">
         <label>Valor de la vivienda</label>
@@ -255,7 +279,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <button id="tvv-ars" onclick="setCur('vv','ars')">ARS</button>
             <button id="tvv-usd" class="on" onclick="setCur('vv','usd')">USD</button>
           </div>
-          <input type="text" id="ValorVivienda" placeholder="USD 0" value="180.000" oninput="onAmt('vv')" style="flex:1">
+          <input type="text" id="ValorVivienda" placeholder="USD 0" value="195.000" oninput="onAmt('vv')" style="flex:1">
         </div>
         <span class="hint" id="h-vv"></span>
         <span class="err" id="e-ValorVivienda"></span>
@@ -267,13 +291,36 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             <button id="tmc-ars" onclick="setCur('mc','ars')">ARS</button>
             <button id="tmc-usd" class="on" onclick="setCur('mc','usd')">USD</button>
           </div>
-          <input type="text" id="Monto" placeholder="USD 0" value="135.000" oninput="onAmt('mc')" style="flex:1">
+          <input type="text" id="Monto" placeholder="USD 0" value="144.500" oninput="onAmt('mc')" style="flex:1">
         </div>
         <span class="hint" id="h-mc"></span>
         <span class="err" id="e-Monto"></span>
       </div>
       <button class="btn" onclick="calcular()" style="flex-shrink:0;align-self:flex-start;margin-top:18px">Calcular cuota</button>
     </div>
+    <div class="hint" id="simulationNotice" style="line-height:1.6;margin-top:8px"></div>
+    <details id="bnaTermsInfo" style="margin-top:10px">
+      <summary style="cursor:pointer;color:var(--accent)">Condiciones BNA para compra · revisadas el 11/10/2026</summary>
+      <div class="hint" style="line-height:1.7;margin-top:8px">
+        Referencia pública: TNA del 6,7% para clientes elegibles que cobran haberes en BNA y compran vivienda única y de ocupación permanente de hasta 210.000 UVA; 12% para otros segmentos.
+        Límites del préstamo: mínimo de 15.000 UVA; máximo de 157.500 / 260.000 UVA según el segmento.
+        Límites de la propiedad: 210.000 / 350.000 UVA. Financiación: hasta el 75% del menor valor entre precio de compra y tasación.
+        Sistema francés con cuotas mensuales; plazos de compra de 5 a 30 años. Tasación a cargo de BNA.
+        Referencia de honorarios: hasta el 1% de la compra más el 0,6% de la hipoteca, con un mínimo publicado de ARS 1.200.000; confirmar cómo se aplica ese mínimo en el presupuesto.<br><br>
+        Anexo publicado para clientes: edad al finalizar el préstamo de hasta 85 años; hasta dos titulares y dos codeudores familiares elegibles.
+        Afectación de ingresos mensuales de hasta el 25%; los titulares cubren al menos la mitad de la cuota cuando se incluyen codeudores.
+        Las deudas existentes, el ingreso remanente superior al salario mínimo y las condiciones laborales y jubilatorias afectan la elegibilidad individual.
+        Los titulares de la escritura y del préstamo deben coincidir; se excluyen inmuebles comerciales.
+        Préstamo en pesos expresado en UVA al firmar; las cuotas usan la UVA de la fecha de vencimiento.
+        Comisión por cancelación anticipada: 4%; deja de aplicarse al cumplir el mayor plazo entre un cuarto del plazo original y 180 días.
+        El seguro cubre la reconstrucción y excluye el terreno. Para tu operación rigen el contrato, la tasa aprobada y la cotización de la aseguradora.<br><br>
+        <a href="https://www.bna.com.ar/Personas/CreditosHipotecarios" target="_blank" rel="noopener noreferrer">Oferta BNA vigente</a> ·
+        <a href="https://www.bna.com.ar/Downloads/Home_ContratosDeAdhesion_Reg-800%20%281A%29%20091225.pdf" target="_blank" rel="noopener noreferrer">Anexo publicado para clientes (diciembre de 2025)</a> ·
+        <a href="https://www.bna.com.ar/Personas/SimuladorHipotecariosUva" target="_blank" rel="noopener noreferrer">Simulador oficial</a><br>
+        El anexo anterior todavía indica un 6%; la oferta vigente indica un 6,7%. La prima para el tope CVS está desactivada por defecto.
+        Las diferencias entre fuentes sobre comisiones MEP y seguros requieren confirmación antes de considerarlas costos presupuestados.
+      </div>
+    </details>
   </div>
 </div>
 
@@ -284,14 +331,17 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
       <div class="bh" id="r-bh-detalle">Detalles del préstamo</div>
       <ul>
         <li>Prop. de apoyo<span id="r-apoyo"></span></li>
-        <li>Cuota en UVAs<span id="r-cuuva"></span></li>
+        <li>Primera cuota total (UVA)<span id="r-cuuva"></span></li>
+        <li>Capital e interés (ARS)<span id="r-pure"></span></li>
+        <li>Cargo anual del seguro (ARS)<span id="r-insurance"></span></li>
+        <li>Mayor cuota prevista (ARS)<span id="r-peak"></span></li>
         <li>Valor propiedad en UVA<span id="r-propuva"></span></li>
         <li>Monto inicial en UVA<span id="r-montouva"></span></li>
-        <li>Ingresos nec. titulares + codeudores<span id="r-ingrnec"></span></li>
-        <li>Ingresos mínimos titulares<span id="r-ingrmin"></span></li>
+        <li>Ingreso estimado exigido por el banco (sin seguro)<span id="r-ingrnec"></span></li>
+        <li>Ingreso para cubrir la mayor cuota total (25%)<span id="r-budget-income"></span></li>
       </ul>
       <div class="tot">
-        <span>Cuota en $</span>
+        <span>Primera cuota total</span>
         <div>
           <div class="tv" id="r-cupesos"></div>
           <div class="tusd" id="r-cuusd"></div>
@@ -318,17 +368,16 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 <!-- ESCRITURACIÓN -->
 <div class="card">
   <div class="card-hdr">
-    Gastos de escrituración
+    Gastos de operación
     <div class="tip-wrap" style="margin-left:auto">
       <span class="tip-icon">ⓘ fuentes</span>
       <div class="tip-box">
-        <strong style="color:var(--txt)">Fuentes oficiales PBA 2026</strong><br><br>
-        <a href="https://web.arba.gov.ar/sellos" target="_blank">ARBA — Sellos</a> ·
-        <a href="https://www.arba.gov.ar/archivos/Publicaciones/leyimpositiva2026.pdf" target="_blank">Ley Impositiva PBA 2026 (PDF)</a> ·
-        <a href="https://www.rpba.gov.ar/noticias/Nueva_Gu%EDa_de_Tasas" target="_blank">RPBA — Tasas 2026</a> ·
-        <a href="https://www.colegio-escribanos.org.ar/2025/12/18/ley-impositiva-provincia-de-buenos-aires-ley-15-558/" target="_blank">Col. Escribanos — Ley 15.558</a> ·
-        <a href="https://www.colegio-escribanos.org.ar/2026/01/08/tabla-de-actos-notariales-provincia-de-buenos-aires-5/" target="_blank">Tabla honorarios notariales PBA (vig. 01/01/2026)</a><br><br>
-        Sellos PBA: 2% total, comprador paga 1% (Ley 15.558/2026). Registro RPBA: 2‰ (0,2%). Honorarios escribano: ~1,5% (Ley 6925). En CABA, primera vivienda &lt; $226,1M exenta de sellos.
+        <strong style="color:var(--txt)">Revisado el 11/10/2026 · PBA</strong><br><br>
+        <a href="https://www.bna.com.ar/Personas/CreditosHipotecarios" target="_blank" rel="noopener noreferrer">Condiciones BNA y honorarios de escrituración</a><br>
+        <a href="https://www.colescba.org.ar/portal/wp-content/uploads/2026/02/TABLA-DE-MONTOS-ALICUOTAS-ACTUALIZACION-AL-01.01.2026-SELLOS-CABA-Y-PBA-DATOS-ADICIONALES.pdf" target="_blank" rel="noopener noreferrer">Impuesto de sellos y exenciones en PBA / CABA</a><br>
+        <a href="https://www.rpba.gob.ar/pdfs/Tasas-2026.pdf" target="_blank" rel="noopener noreferrer">Tasas RPBA 2026</a><br>
+        <a href="https://www.colegio-escribanos.org.ar/noticias/2026_01_07_Tabla_de_Actos_Notariales_General_Ext_Jur_01012026.pdf" target="_blank" rel="noopener noreferrer">Referencia de aportes notariales</a><br><br>
+        La compraventa y la hipoteca son actos separados. Las alícuotas y exenciones usan bases diferentes. Los importes finales requieren el presupuesto del escribano.
       </div>
     </div>
   </div>
@@ -337,23 +386,42 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
       <div class="escri-top-grid" style="display:grid;grid-template-columns:1fr auto auto;gap:12px;align-items:end;margin-bottom:12px">
         <div class="fg">
           <label>Provincia</label>
-          <select id="Provincia" onchange="calcEscri()">
+          <select id="Provincia" onchange="refreshSimulation()">
             <option value="caba">Ciudad de Buenos Aires (CABA)</option>
             <option value="pba" selected>Provincia de Buenos Aires (GBA / PBA)</option>
             <option value="otra">Otra provincia (estimado)</option>
           </select>
         </div>
         <div class="fg" style="max-width:90px">
-          <label>Comisión %</label>
-          <input type="text" id="ComisionPct" value="3" inputmode="decimal" oninput="calcEscri()" style="text-align:right">
+          <label>Comisión % + IVA</label>
+          <input type="text" id="ComisionPct" value="4" inputmode="decimal" oninput="refreshSimulation()" style="text-align:right">
         </div>
         <div class="fg" style="padding-bottom:2px">
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--sec);white-space:nowrap">
-            <input type="checkbox" id="PrimeraViv" checked onchange="calcEscri()" style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
-            Primera vivienda
+            <input type="checkbox" id="PrimeraViv" checked onchange="onPrimaryHome()" style="width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0">
+            Vivienda única, familiar y de ocupación permanente
           </label>
         </div>
       </div>
+      <details style="margin-bottom:10px">
+        <summary style="cursor:pointer;color:var(--accent)">Bases fiscales PBA y presupuesto del escribano</summary>
+        <div class="grid2" style="margin-top:10px">
+          <div class="fg"><label>Cotización fiscal USD / ARS — opcional</label><input id="fiscalUSD" placeholder="Usa la cotización de la operación" oninput="refreshSimulation()"><span class="hint">Cotización vendedora BNA al cierre del día hábil anterior.</span></div>
+          <div class="fg"><label>Valuación fiscal básica (ARS)</label><input id="fiscalBasicARS" placeholder="Sin dato: no se supone exención en la compra" oninput="refreshSimulation()"></div>
+          <div class="fg"><label>Valuación fiscal ajustada / VIR CABA (ARS)</label><input id="fiscalActARS" placeholder="PBA: valuación básica × 24,837, si se informa" oninput="refreshSimulation()"></div>
+          <div class="fg"><label>Monto de la escritura hipotecaria (ARS) — opcional</label><input id="mortgageDeedARS" placeholder="Se supone el monto del préstamo" oninput="refreshSimulation()"></div>
+          <div class="fg"><label>Parte del comprador en sellos de compraventa (%)</label><input id="buyerStampShare" value="50" oninput="refreshSimulation()"></div>
+          <div class="fg"><label>Presupuesto de honorarios sin IVA (ARS)</label><input id="notarialQuoteARS" placeholder="Referencia BNA: compraventa + hipoteca" oninput="refreshSimulation()"></div>
+          <div class="fg"><label>Honorarios por compraventa (%)</label><input id="purchaseNotaryPct" value="1" oninput="refreshSimulation()"></div>
+          <div class="fg"><label>Honorarios por hipoteca (%)</label><input id="mortgageNotaryPct" value="0,6" oninput="refreshSimulation()"></div>
+          <div class="fg"><label><input type="checkbox" id="notarialVAT" checked onchange="refreshSimulation()"> El escribano cobra IVA del 21%</label><label><input type="checkbox" id="registryUrgent" onchange="refreshSimulation()"> Trámite urgente en RPBA</label></div>
+          <div class="fg"><label>Aporte por hipoteca a cargo del comprador (%)</label><input id="mortgageContributionPct" value="0,15" oninput="refreshSimulation()"><span class="hint">Distribución de referencia; confirmar con el escribano.</span></div>
+          <div class="fg"><label>Certificados de dominio (cantidad)</label><input id="domainCertificates" value="1" oninput="refreshSimulation()"></div>
+          <div class="fg"><label>Certificados personales (cantidad)</label><input id="personalCertificates" value="2" oninput="refreshSimulation()"></div>
+          <div class="fg"><label>Otros gastos de escrituración presupuestados (ARS)</label><input id="otherClosingARS" value="0" oninput="refreshSimulation()"><span class="hint">Agregá gastos catastrales, estudio de títulos y otros cargos presupuestados por separado.</span></div>
+          <div class="fg"><label><input type="checkbox" id="useMEP" onchange="refreshSimulation()"> Incluir comisión MEP de BNA</label><label>Comisión MEP total presupuestada (%)</label><input id="mepPct" placeholder="Confirmar la comisión total presupuestada" oninput="refreshSimulation()"><span class="hint">Anexo 2025: 0,5% por cada tramo; página vigente: 0,5%. Ingresá el total confirmado.</span></div>
+        </div>
+      </details>
       <div id="escriRes"></div>
     </div>
   </div>
@@ -380,7 +448,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
           <td id="b-anticipo-usd">—</td>
         </tr>
         <tr>
-          <td>Gastos de escrituración</td>
+          <td>Gastos de operación</td>
           <td id="b-escri-pct">—</td>
           <td id="b-escri-ars">—</td>
           <td id="b-escri-usd">—</td>
@@ -438,17 +506,17 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
         <select id="inv-plazo" onchange="calcularInverso()">
           <option value="">Seleccioná una opción</option>
           <option value="5">5</option><option value="10">10</option>
-          <option value="15">15</option><option value="20" selected>20</option>
-          <option value="25">25</option><option value="30">30</option>
+          <option value="15">15</option><option value="20">20</option>
+          <option value="25">25</option><option value="30" selected>30</option>
         </select>
       </div>
       <div class="fg">
-        <label>Gastos de escrituración</label>
+        <label>Gastos de operación</label>
         <div class="irow">
-          <input type="text" id="inv-escriPct" placeholder="7.10" oninput="this._touched=true;calcularInverso()" style="flex:1">
+          <input type="text" id="inv-escriPct" placeholder="Itemized costs" oninput="this._touched=true;calcularInverso()" style="flex:1">
           <span style="color:var(--muted);flex-shrink:0">%</span>
         </div>
-        <span class="hint">Auto-calculado desde Tab 1</span>
+        <span class="hint">Vacío: usa los gastos desglosados de la pestaña 1. Ingresá un % para reemplazarlos.</span>
       </div>
     </div>
   </div>
@@ -526,7 +594,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
           <td id="inv-b-anticipo-usd">—</td>
         </tr>
         <tr>
-          <td>Gastos de escrituración</td>
+          <td>Gastos de operación</td>
           <td id="inv-b-escri-pct">—</td>
           <td id="inv-b-escri-ars">—</td>
           <td id="inv-b-escri-usd">—</td>
@@ -553,7 +621,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 <!-- aclaración de contexto -->
 <div class="card" style="border-left:3px solid var(--accent);padding:12px 16px;margin-bottom:16px;font-size:13px;color:var(--muted);line-height:1.6">
   <strong style="color:var(--txt);display:block;margin-bottom:4px">¿Para qué sirve esta pestaña?</strong>
-  En un crédito UVA, el banco aprueba y define el monto del préstamo expresado en UVAs. Sin embargo, entre ese momento y el día en que efectivamente acredita los fondos puede pasar un tiempo. Si en ese intervalo el tipo de cambio sube, el comprador recibe la misma cantidad de pesos de siempre (el valor en UVAs no cambia), pero esos pesos <strong style="color:var(--txt)">alcanzan para comprar menos dólares</strong> que los pactados originalmente. Esto puede generar un faltante para completar la operación inmobiliaria. Esta pestaña permite simular distintos escenarios de variación del dólar para estimar cuántos dólares adicionales habría que tener disponibles como respaldo.
+  Modelá por separado la cotización y la UVA al desembolsar. El anexo publicado por BNA indica que el préstamo se expresa en UVA al firmar. Seleccioná si tu aprobación fija pesos o UVA, según lo confirmado por el banco. Se supone un precio de la vivienda fijo en USD; los ahorros y gastos de escrituración requieren supuestos propios sobre la moneda.
 </div>
 
 <!-- sin simulación previa -->
@@ -566,14 +634,14 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
   <div class="main-grid">
     <!-- valores de referencia -->
     <div class="rbox">
-      <div class="bh">El préstamo en pesos (lo que varía)</div>
+      <div class="bh">Escenario de desembolso del préstamo</div>
       <ul>
         <li>Cotización base<span id="r3-usd0"></span></li>
         <li>Préstamo en ARS<span id="r3-monars"></span></li>
         <li>Equivale a (al tipo base)<span id="r3-monusd"></span></li>
       </ul>
       <div style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">
-        Tu anticipo y los gastos de escrituración ya están en dólares, por lo que no se ven afectados por variaciones del tipo de cambio.
+        Aquí no se modelan la moneda de los ahorros ni los gastos de escrituración.
       </div>
     </div>
 
@@ -581,6 +649,10 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
     <div class="card">
       <div class="card-hdr">Escenario puntual</div>
       <div class="card-body">
+        <div class="grid2" style="margin-bottom:12px">
+          <div class="fg"><label>Monto aprobado fijado en</label><select id="riskLoanBasis" onchange="actualizarEscenarioPuntual()"><option value="ars">Pesos — UVA fijadas al firmar</option><option value="uva">UVA — los pesos cambian al desembolsar</option></select></div>
+          <div class="fg"><label>Variación de UVA al desembolsar (%)</label><input id="riskUVADelta" value="0" oninput="actualizarEscenarioPuntual()"></div>
+        </div>
         <div style="margin-bottom:16px">
           <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
             <span style="font-size:13px;color:var(--muted)">Si el dólar varía</span>
@@ -638,7 +710,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
                 <th id="at-h-sal0" style="text-align:right">Saldo inicial</th>
                 <th id="at-h-int" style="text-align:right">Interés</th>
                 <th id="at-h-cap" style="text-align:right">Capital</th>
-                <th id="at-h-seg" style="text-align:right">Seguro</th>
+                <th id="at-h-seg" style="text-align:right">Seguro / IVA / prima / productos</th>
                 <th id="at-h-cu" style="text-align:right">Cuota total</th>
                 <th id="at-h-adel" class="hidden" style="text-align:right">Adelanto</th>
                 <th id="at-h-acum" class="hidden" style="text-align:right">Acum. adelantado</th>
@@ -734,7 +806,7 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
             </table>
           </div>
           <div style="font-size:11px;color:var(--muted);margin-top:6px">
-            * La cuota mensual no cambia. El saldo y los ahorros en intereses se expresan al UVA actual ($ <span id="a-uva-ref"></span>). Los pagos anticipados siempre reducen el plazo.
+            * La cuota de capital e interés sigue la modalidad de cancelación anticipada seleccionada. El saldo y los ahorros en intereses se expresan al UVA actual ($ <span id="a-uva-ref"></span>). Los adelantos se aplican después de la cuota mensual; confirmá la modalidad con el banco.
           </div>
         </div>
       </div>
@@ -746,927 +818,604 @@ input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;bac
 </div><!-- /wrap -->
 
 <script>
-// ── bank configs ──────────────────────────────────────────
+
+// Reviewed 2026-10-11. Public offer rates are references, not approval terms.
 const BANCOS = {
-  bna: {
-    nombre: 'Banco Nación',
-    tna: 6,
-    tna_hint: '— BNA con haberes',
-    tna_alt: 'Segunda vivienda o propiedad > 210.000 UVAs: TNA 12%',
-    apoyo_max: 75,
-    plazo_max: 30,
-    mon_max_uva: 157500,         // límite para TNA 6% (vivienda única ≤ 210.000 UVAs)
-    prop_max_uva: 210000,        // umbral TNA 6%; por encima aplica TNA 12%
-    mul_ingresos: 4,
-    seg_inc: 0.0006,
-  },
-  bbva: {
-    nombre: 'BBVA',
-    tna: 7.5,
-    tna_hint: '— BBVA con acreditación de haberes + seguro hogar Premier',
-    apoyo_max: 80,
-    plazo_max: 30,
-    mon_max_pesos: null,         // Sin tope fijo; sujeto a capacidad de pago y relación cuota/ingreso
-    prop_max_uva: null,
-    mul_ingresos: 4.8,
-    seg_inc: 0.000898,           // Seguro de Hogar Premier BBVA (~0.09% anual del monto del préstamo)
-    seg_inc_on_loan: true,       // BBVA calcula el seguro sobre el monto prestado, no el valor de la propiedad
-  },
-  icbc: {
-    nombre: 'ICBC',
-    tna: 6.9,
-    tna_hint: '— ICBC con acreditación de haberes',
-    tna_alt: 'Sin acreditación ICBC: TNA 9,9%',
-    apoyo_max: 75,
-    plazo_max: 20,               // Máximo 240 meses según letra chica
-    mon_max_pesos: 400000000,
-    mon_min_pesos: 10000000,
-    prop_max_uva: null,
-    mul_ingresos: 4,
-    seg_inc: 0,                  // CFTNA = TEA (seguro de incendios en pesos, no incluido en CFT)
-  },
+  bna: {nombre:'Banco Nación', tna:6.7, apoyo_max:75, plazo_max:30, minUVA:15000, maxUVA:157500, highMaxUVA:260000, maxPropertyUVA:350000, insurancePct:0.06, insuranceTiming:'annual', purchaseFee:1, mortgageFee:0.6},
+  bbva:{nombre:'BBVA', tna:7.5, apoyo_max:80, plazo_max:30, minARS:20000000, maxUVA:Infinity, insurancePct:null, insuranceTiming:'monthly', purchaseFee:1.5, mortgageFee:0.6},
+  icbc:{nombre:'ICBC', tna:6.9, apoyo_max:80, plazo_max:20, minARS:10000000, maxARS:400000000, insurancePct:null, insuranceTiming:'monthly', purchaseFee:1.5, mortgageFee:0.6}
 };
-// ── state ─────────────────────────────────────────────────
-let banco = BANCOS.bna;
-let bancoId = 'bna';
-let UVA = 2041.81, USD = 1500, TNA = 6; // fallback si fallan las APIs de BCRA/DolarAPI (ver fetchMarketDefaults)
-let curVV = 'usd', curMC = 'usd';
-let curBol = 'usd', curCumax = 'ars';
-let curAmort = 'uva';
-let adelantos = [], adelantoSig = 0;
-const COMISION_ADELANTO = 0.04 * 1.21; // 4% + IVA 21% = 4,84%
-let escriTotal = 0;
-let lastSim = null;
-// ── parse / format ────────────────────────────────────────
-function parseNum(s){
-  s = (s||'').trim().replace(/[$\s]/g,'');
+let banco=BANCOS.bna, bancoId='bna', UVA=2150.53, USD=1535, TNA=6.7;
+let curVV='usd', curMC='usd', curBol='usd', curCumax='ars', curAmort='uva';
+let adelantos=[], adelantoSig=0, escriTotal=0, lastSim=null, customClosingPct=null;
+let marketRequest=0;
+const REVIEW_DATE='2026-10-11', PBA_FISCAL_COEFFICIENT=24.837;
+const PBA_HOME_FISCAL_LIMIT=1154400, PBA_MORTGAGE_LIMIT=251281250;
+const CABA_HOME_LIMIT=226100000;
+const $=id=>document.getElementById(id);
+function setText(id,value){if($(id)) $(id).textContent=value;}
+function fmt(n,d=0){return Number.isFinite(n)?n.toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:d}):'—';}
+function parseNum(value){
+  const s=String(value??'').trim().replace(/^\$\s*/,'').replace(/\s/g,'');
   if(!s) return 0;
-  // tiene coma → formato es-AR: puntos=miles, coma=decimal
-  if(s.includes(',')) return parseFloat(s.replace(/\./g,'').replace(',','.')) || 0;
-  // tiene punto: si los últimos dígitos tras el punto son exactamente 3 → separador de miles
-  if(s.includes('.')){
-    const after = s.split('.').pop();
-    if(after.length === 3) return parseFloat(s.replace(/\./g,'')) || 0;
-    return parseFloat(s) || 0;  // punto decimal (ej: 1958.09)
+  let normalized;
+  if(/^[+-]?\d{1,3}(?:\.\d{3})+(?:,\d+)?$/.test(s)) normalized=s.replace(/\./g,'').replace(',','.');
+  else if(/^[+-]?\d+(?:,\d+)?$/.test(s)) normalized=s.replace(',','.');
+  else if(/^[+-]?\d+(?:\.\d+)?$/.test(s)) normalized=s;
+  else return NaN;
+  const n=Number(normalized);
+  return Number.isFinite(n)?n:NaN;
+}
+function readAmount(id,{optional=false,min=0,max=Infinity}={}){
+  const field=$(id), text=field?field.value.trim():'';
+  if(optional&&!text) return null;
+  const value=parseNum(text);
+  if(!Number.isFinite(value)||value<min||value>max) throw Error('Valor inválido: '+(field?.closest('.fg')?.querySelector('label')?.textContent||id));
+  return value;
+}
+// Percentages always accept a decimal point; grouping separators are not accepted.
+function readPercent(id,{optional=false,max=100}={}){
+  const s=$(id)?.value.trim()||'';
+  if(optional&&!s) return null;
+  if(!/^\d+(?:[.,]\d+)?$/.test(s)) throw Error('Ingresá un porcentaje válido: '+id);
+  const v=Number(s.replace(',','.'));
+  if(!Number.isFinite(v)||v<0||v>max) throw Error('Porcentaje fuera del rango permitido: '+id);
+  return v;
+}
+function readCount(id,max=50){
+  const v=readAmount(id,{max});
+  if(!Number.isInteger(v)) throw Error('Ingresá un número entero: '+id);
+  return v;
+}
+function getARS(id,cur){const v=parseNum($(id).value);return cur==='usd'?v*USD:v;}
+function isPrimary(){return $('housingUse').value==='primary'&&$('PrimeraViv').checked;}
+function onHousingUse(){ $('PrimeraViv').checked=$('housingUse').value==='primary';refreshSimulation();}
+function onPrimaryHome(){ $('housingUse').value=$('PrimeraViv').checked?'primary':'secondary';refreshSimulation();}
+function selectedYears(id){
+  const years=Number($(id).value);
+  if(![5,10,15,20,25,30].includes(years)||years>banco.plazo_max) throw Error('Seleccioná un plazo de préstamo permitido.');
+  return years;
+}
+function cuotaFr(cap,tem,n){
+  if(!Number.isFinite(cap)||cap<0||!Number.isFinite(tem)||tem<0||!Number.isInteger(n)||n<1) throw Error('Parámetros de amortización inválidos.');
+  return tem===0?cap/n:cap*tem/-Math.expm1(-n*Math.log1p(tem));
+}
+function getBankTerms(propertyARS,loanARS,years,options={}){
+  const primary=isPrimary(), salary=$('salaryAccount').checked;
+  const appraisalUSD=readAmount('appraisalUSD',{optional:true,min:0.01});
+  const appraisalARS=options.ignoreAppraisal||appraisalUSD===null?propertyARS:appraisalUSD*USD;
+  const eligibleValue=Math.min(propertyARS,appraisalARS);
+  const highBand=!primary||!salary||Math.max(propertyARS,appraisalARS)/UVA>210000;
+  let reference=banco.tna, maxLoan=banco.maxARS??banco.maxUVA*UVA, maxProperty=Infinity, support=banco.apoyo_max;
+  if(bancoId==='bna'){reference=highBand?12:6.7;maxLoan=(highBand?260000:157500)*UVA;maxProperty=(highBand?350000:210000)*UVA;}
+  if(bancoId==='bbva'){reference=primary?(salary?7.5:11.5):15;}
+  if(bancoId==='icbc'){reference=salary?6.9:9.9;if(!primary){maxLoan=200000000;support=50;}}
+  const approved=readPercent('approvedTNA',{optional:true});
+  const rate=approved??reference, tem=rate/1200, n=years*12;
+  const coverage=$('cvsCover').checked;
+  if(coverage&&(bancoId!=='bna'||highBand)) throw Error('La prima para el tope CVS solo está disponible para el segmento elegible de vivienda única en BNA.');
+  const reconstruction=readAmount('reconstructionARS',{optional:true,min:0.01});
+  const annualPct=readPercent('insurancePct',{optional:true});
+  const monthlyQuote=readAmount('insuranceMonthlyARS',{optional:true});
+  const insuredBase=bancoId==='bbva'?loanARS:(reconstruction??propertyARS);
+  const annualInsurance=(annualPct??0)/100*insuredBase/UVA;
+  const monthlyProducts=readAmount('monthlyProductsARS')/UVA;
+  const premium=coverage?cuotaFr(loanARS/UVA,(rate+2)/1200,n)-cuotaFr(loanARS/UVA,tem,n):0;
+  const minimum=banco.minARS??banco.minUVA*UVA;
+  return {bankId:bancoId,bankName:banco.nombre,rate,reference,approved,tem,n,primary,salary,highBand,
+    support,eligibleValue,maxLoan,maxProperty,minimum,annualInsurance,
+    insuranceTiming:$('insuranceTiming').value,monthlyInsurance:monthlyQuote===null?null:monthlyQuote/UVA,
+    insuranceKnown:monthlyQuote!==null||annualPct!==null,premium,monthlyProducts,
+    vatInterest:primary?0:0.21,vatPremium:0.21,
+    prepaymentRate:readPercent('prepaymentPct')/100*($('prepaymentVAT').checked?1.21:1),
+    prepaymentStrategy:$('prepaymentStrategy').value,loanDate:$('loanDate').value,
+    insuranceEstimated:monthlyQuote===null,appraisalEstimated:appraisalUSD===null,
+    reconstructionEstimated:reconstruction===null};
+}
+function segIncendio(propUVA,monUVA,month=1,terms=lastSim?.terms){
+  if(!terms) throw Error('Se requieren los datos del seguro.');
+  if(terms.monthlyInsurance!==null) return terms.monthlyInsurance;
+  return terms.insuranceTiming==='annual' ? ((month-1)%12===0?terms.annualInsurance:0) : terms.annualInsurance/12;
+}
+function extraPayment(terms,month,interest){
+  const seguro=segIncendio(0,0,month,terms), prima=month>=7?terms.premium:0;
+  return {seguro,prima,iva:interest*terms.vatInterest+prima*terms.vatPremium,products:terms.monthlyProducts};
+}
+function IRR(values){
+  if(!values.every(Number.isFinite)||values[0]>=0||!values.slice(1).some(v=>v>0)) return NaN;
+  const npv=r=>values.reduce((total,v,i)=>total+v/Math.pow(1+r,i),0);
+  let lo=-0.9999,hi=1;
+  while(npv(hi)>0&&hi<1024) hi=hi*2+1;
+  if(npv(hi)>0) return NaN;
+  for(let i=0;i<160;i++){const mid=(lo+hi)/2;if(npv(mid)>0) lo=mid;else hi=mid;}
+  return (lo+hi)/2;
+}
+function planDeCuotas(monUVA,propUVA,tem,n,terms){
+  const pure=cuotaFr(monUVA,tem,n), cuotas=[{sal:monUVA,cu:0,ct:-monUVA}], costs=[-monUVA];
+  let balance=monUVA;
+  for(let m=1;m<=n;m++){
+    const interest=balance*tem, capital=Math.min(balance,Math.max(pure-interest,0));
+    const payment=capital+interest, extra=extraPayment(terms,m,interest);
+    balance=Math.max(balance-capital,0);
+    const total=payment+extra.seguro+extra.iva+extra.prima+extra.products;
+    cuotas.push({sal:balance,cu:payment,ct:total,capital,interes:interest,...extra});
+    costs.push(total);
   }
-  return parseFloat(s) || 0;
+  const monthly=IRR(costs);
+  return {cuotas,cft_tem:monthly*100,cft_tna:monthly*1200,cft_tea:Math.expm1(12*Math.log1p(monthly))*100};
 }
-function fmt(n, d=0){ return isNaN(n) ? '0' : parseFloat(n.toFixed(d)).toLocaleString('es-AR'); }
-// ── bank selector ─────────────────────────────────────────
-function setBanco(id){
-  bancoId = id;
-  banco = BANCOS[id];
-  document.getElementById('bancoDrop').value = id;
-  document.getElementById('apoyoMax').textContent = banco.apoyo_max + '%';
-  document.getElementById('apoyoMaxInline').textContent = banco.apoyo_max + '%';
-  document.getElementById('formBancoNombre').textContent = banco.nombre;
-  document.getElementById('r-bh-detalle').textContent = 'Detalles del préstamo · ' + banco.nombre;
-  document.getElementById('inv-banco-nombre').textContent = banco.nombre;
-  // Enforce plazo_max on both dropdowns
-  ['Plazo', 'inv-plazo'].forEach(function(selId){
-    const sel = document.getElementById(selId);
-    if(!sel) return;
-    Array.from(sel.options).forEach(function(opt){
-      const v = parseInt(opt.value);
-      if(v) opt.disabled = v > banco.plazo_max;
-    });
-    if(parseInt(sel.value) > banco.plazo_max) sel.value = banco.plazo_max;
-  });
-  onMkt();
+function getClosingSettings(){
+  const countDomain=readCount('domainCertificates'),countPersonal=readCount('personalCertificates');
+  const fiscalUSD=readAmount('fiscalUSD',{optional:true,min:0.01})??USD;
+  return {province:$('Provincia').value,primary:isPrimary(),commission:readPercent('ComisionPct')/100,
+    fiscalUSD,basic:readAmount('fiscalBasicARS',{optional:true}),
+    fiscalAct:readAmount('fiscalActARS',{optional:true}),
+    mortgageOverride:readAmount('mortgageDeedARS',{optional:true,min:0.01}),
+    buyerShare:readPercent('buyerStampShare')/100,
+    quote:readAmount('notarialQuoteARS',{optional:true}),notaryVAT:$('notarialVAT').checked?1.21:1,
+    purchaseFee:readPercent('purchaseNotaryPct')/100,mortgageFee:readPercent('mortgageNotaryPct')/100,
+    mortgageContribution:readPercent('mortgageContributionPct')/100,
+    urgent:$('registryUrgent').checked,countDomain,countPersonal,
+    other:readAmount('otherClosingARS'),mep:$('useMEP').checked?readPercent('mepPct')/100:0};
 }
-// ── market ────────────────────────────────────────────────
+function calculateClosingCosts(propertyARS,loanARS,settings=getClosingSettings()){
+  if(!(propertyARS>0)||!(loanARS>=0)) throw Error('Ingresá importes positivos para la vivienda y el préstamo.');
+  const pba=settings.province==='pba',caba=settings.province==='caba';
+  const fiscalPrice=propertyARS/USD*settings.fiscalUSD;
+  const fiscalAct=settings.fiscalAct??(pba&&settings.basic!==null?settings.basic*PBA_FISCAL_COEFFICIENT:0);
+  const base=Math.max(fiscalPrice,fiscalAct);
+  const mortgage=settings.mortgageOverride??loanARS;
+  const exemptPurchase=pba&&settings.primary&&settings.basic!==null&&settings.basic<=PBA_HOME_FISCAL_LIMIT;
+  const exemptMortgage=pba&&settings.primary&&mortgage<=PBA_MORTGAGE_LIMIT;
+  let purchaseStamps;
+  if(pba) purchaseStamps=exemptPurchase?0:base*0.02*settings.buyerShare;
+  else if(caba) purchaseStamps=settings.primary?Math.max(base-CABA_HOME_LIMIT,0)*0.035*settings.buyerShare:base*(base<=CABA_HOME_LIMIT?0.027:0.035)*settings.buyerShare;
+  else purchaseStamps=base*0.03*settings.buyerShare;
+  const purchaseFee=propertyARS*settings.purchaseFee,mortgageFee=loanARS>0?mortgage*settings.mortgageFee:0;
+  const feeReference=purchaseFee+mortgageFee;
+  const notaryBeforeVAT=settings.quote??(bancoId==='bna'?Math.max(feeReference,1200000):feeReference);
+  const notary=notaryBeforeVAT*settings.notaryVAT;
+  const purchaseRegistryExempt=pba&&settings.primary&&settings.basic!==null&&settings.basic<PBA_HOME_FISCAL_LIMIT;
+  const mortgageRegistryExempt=pba&&settings.primary&&mortgage<PBA_MORTGAGE_LIMIT;
+  const registry=(amount,exempt)=>exempt?(settings.urgent?112800:35800):Math.max(amount*0.002,42000)+(settings.urgent?Math.max(amount*0.001,282000):0);
+  const purchaseRegistry=pba?registry(base,purchaseRegistryExempt):base*0.007;
+  const mortgageRegistry=loanARS>0?(pba?registry(mortgage,mortgageRegistryExempt):0):0;
+  const mortgageStamps=loanARS>0?(pba?(exemptMortgage?0:mortgage*0.018):caba?0:mortgage*0.018):0;
+  const purchaseContribution=pba?(exemptPurchase?0:base*0.002):0;
+  const mortgageContribution=loanARS>0&&pba?(exemptMortgage?25000:Math.max(mortgage*settings.mortgageContribution,25000)):0;
+  const certificates=pba?(settings.countDomain+settings.countPersonal)*(settings.urgent?70800:27800):0;
+  const commission=propertyARS*settings.commission*1.21,mep=loanARS*settings.mep;
+  const rows=[
+    ['Comisión inmobiliaria ('+fmt(settings.commission*100,2)+'% + IVA del 21%)',commission],
+    ['Referencia de honorarios por compraventa',purchaseFee],['Referencia de honorarios por hipoteca',mortgageFee],
+    ['Honorarios a pagar '+(settings.quote!==null?'(presupuestados)':'(referencia, con IVA / mínimo)'),notary],
+    ['Sellos de compraventa — parte del comprador'+(exemptPurchase?' (exento)':''),purchaseStamps],
+    ['Sellos de hipoteca'+(exemptMortgage?' (exento)':''),mortgageStamps],
+    ['Inscripción de compraventa',purchaseRegistry],['Inscripción de hipoteca',mortgageRegistry],
+    ['Aporte notarial del comprador — compraventa (referencia)',purchaseContribution],
+    ['Aporte notarial del comprador — hipoteca (referencia)',mortgageContribution],
+    ['Certificados de dominio / personales (cantidades estimadas)',certificates],
+    ['Otros gastos presupuestados',settings.other],['Comisión MEP (supuesto presupuestado)',mep]
+  ];
+  const total=commission+notary+purchaseStamps+mortgageStamps+purchaseRegistry+mortgageRegistry+purchaseContribution+mortgageContribution+certificates+settings.other+mep;
+  return {total,rows,base,mortgage,notary,purchaseStamps,mortgageStamps,purchaseRegistry,mortgageRegistry,commission,exemptPurchase,exemptMortgage,settings};
+}
+function clearSimulation(){
+  lastSim=null;
+  $('rs').classList.add('hidden');
+  $('r3-body').classList.add('hidden');$('r3-empty').classList.remove('hidden');
+  $('t4-content').classList.add('hidden');$('t4-nosim').classList.remove('hidden');
+  $('t4-adelanto-form').classList.add('hidden');$('t4-nosim2').classList.remove('hidden');
+  $('t4-adelanto-result').classList.add('hidden');
+}
 function onMkt(){
-  UVA = parseNum(document.getElementById('valUVA').value) || 2041.81;
-  USD = parseNum(document.getElementById('cotUSD').value) || 1500;
-  TNA = banco.tna;
-  updHints(); calcEscri(); updBolsillo(); calcularInverso();
+  UVA=parseNum($('valUVA').value);USD=parseNum($('cotUSD').value);
+  refreshSimulation();
 }
-// ── auto-fetch UVA (BCRA) y dólar oficial (DolarAPI) ───────
-async function fetchMarketDefaults(){
-  const uvaEl = document.getElementById('valUVA');
-  const usdEl = document.getElementById('cotUSD');
-  const statusEl = document.getElementById('mktStatus');
-  const btn = document.getElementById('mktRefreshBtn');
-  if(btn) btn.disabled = true;
-  if(statusEl) statusEl.textContent = 'actualizando…';
-  const isoDate = d => d.toISOString().slice(0,10);
-  const hasta = isoDate(new Date());
-  const desdeD = new Date(); desdeD.setDate(desdeD.getDate()-15);
-  const desde = isoDate(desdeD);
-
-  const [uvaRes, usdRes] = await Promise.allSettled([
-    fetch(`https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/31?desde=${desde}&hasta=${hasta}`).then(r=>r.json()),
-    fetch('https://dolarapi.com/v1/dolares/oficial').then(r=>r.json()),
+function markMarketEdit(){marketRequest++;setText('mktStatus','Valores manuales para la operación');onMkt();}
+function refreshSimulation(){
+  clearSimulation();
+  try{
+    if(!Number.isFinite(UVA)||UVA<=0||!Number.isFinite(USD)||USD<=0) throw Error('La UVA y la cotización USD / ARS deben ser números positivos y finitos.');
+    updHints();calcEscri();updBolsillo();calcular();calcularInverso();
+  }catch(error){
+    setText('simulationNotice',error.message);setText('escriRes','No se puede calcular: '+error.message);
+    escriTotal=NaN;updBolsillo();clearInverse();
+  }
+}
+function setBanco(id){
+  if(!BANCOS[id]) return;
+  bancoId=id;banco=BANCOS[id];$('bancoDrop').value=id;$('bnaTermsInfo').classList.toggle('hidden',id!=='bna');
+  setText('apoyoMax',banco.apoyo_max+'%');setText('apoyoMaxInline',banco.apoyo_max+'%');
+  setText('formBancoNombre',banco.nombre);setText('r-bh-detalle','Detalles del préstamo · '+banco.nombre);
+  setText('inv-banco-nombre',banco.nombre);
+  for(const id of ['Plazo','inv-plazo']){
+    for(const option of $(id).options) option.disabled=Number(option.value)>banco.plazo_max;
+    if(Number($(id).value)>banco.plazo_max) $(id).value=String(banco.plazo_max);
+  }
+  $('approvedTNA').value='';$('insurancePct').value=banco.insurancePct===null?'':fmt(banco.insurancePct,4);
+  $('insuranceTiming').value=banco.insuranceTiming;$('insuranceMonthlyARS').value='';
+  $('purchaseNotaryPct').value=fmt(banco.purchaseFee,2);$('mortgageNotaryPct').value=fmt(banco.mortgageFee,2);
+  $('cvsCover').checked=false;$('prepaymentVAT').checked=id!=='bna';
+  adelantos=[];renderAdelantosLista();refreshSimulation();
+}
+async function fetchMarketDefaults(explicit=false){
+  const request=++marketRequest,uvaValue=$('valUVA').value,usdValue=$('cotUSD').value;
+  $('mktRefreshBtn').disabled=true;setText('mktStatus','Actualizando referencias…');
+  const date=new Date(),today=date.toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'});
+  const from=new Date(date.getTime()-15*86400000).toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'});
+  const readJSON=async url=>{const response=await fetch(url,{signal:AbortSignal.timeout(15000)});if(!response.ok)throw Error('HTTP '+response.status);return response.json();};
+  const results=await Promise.allSettled([
+    readJSON('https://api.bcra.gob.ar/estadisticas/v4.0/Monetarias/31?desde='+from+'&hasta='+today),
+    readJSON('https://dolarapi.com/v1/dolares/oficial')
   ]);
-
-  let uvaOk = false, usdOk = false;
-  if(uvaRes.status==='fulfilled'){
-    const detalle = uvaRes.value?.results?.[0]?.detalle;
-    const valor = detalle && detalle[0] && Number(detalle[0].valor);
-    if(valor > 0){ uvaEl.value = fmt(valor, 2); uvaOk = true; }
+  if(request!==marketRequest){$('mktRefreshBtn').disabled=false;return;}
+  const statuses=[];
+  if(results[0].status==='fulfilled'){
+    const records=(results[0].value.results||[]).flatMap(item=>item.detalle||[]).filter(item=>Number.isFinite(Number(item.valor))&&Number(item.valor)>0&&item.fecha&&item.fecha.slice(0,10)<=today).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+    if(records.length&&$('valUVA').value===uvaValue){$('valUVA').value=fmt(Number(records[0].valor),2);statuses.push('UVA BCRA '+records[0].fecha.slice(0,10));}
   }
-  if(!uvaOk) console.warn('No se pudo actualizar la UVA desde BCRA', uvaRes.reason);
-
-  if(usdRes.status==='fulfilled'){
-    const venta = Number(usdRes.value?.venta);
-    if(venta > 0){ usdEl.value = fmt(venta, 2); usdOk = true; }
+  if(results[1].status==='fulfilled'){
+    const quote=results[1].value;
+    if(Number.isFinite(Number(quote.venta))&&Number(quote.venta)>0&&$('cotUSD').value===usdValue){
+      $('cotUSD').value=fmt(Number(quote.venta),2);statuses.push('Dólar oficial vendedor '+String(quote.fechaActualizacion||today).slice(0,10));
+    }
   }
-  if(!usdOk) console.warn('No se pudo actualizar el dólar oficial desde DolarAPI', usdRes.reason);
-
-  onMkt();
-  if(btn) btn.disabled = false;
-  if(statusEl){
-    const now = new Date().toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
-    statusEl.textContent = uvaOk && usdOk ? `act. ${now} hs`
-      : (uvaOk || usdOk) ? `act. parcial ${now} hs` : 'sin conexión — valores manuales';
-  }
+  onMkt();$('mktRefreshBtn').disabled=false;
+  setText('mktStatus',statuses.length?statuses.join(' · ')+' · ajustá a tu operación':'Referencias no disponibles · valores manuales');
 }
-// ── currency hints ────────────────────────────────────────
-function getARS(id, cur){ const v = parseNum(document.getElementById(id).value); return cur==='usd' ? v*USD : v; }
 function updHints(){
-  const vv = parseNum(document.getElementById('ValorVivienda').value);
-  const mc = parseNum(document.getElementById('Monto').value);
-  document.getElementById('h-vv').textContent = vv > 0 ? (curVV==='usd' ? `≈ $ ${fmt(vv*USD)} ARS` : `≈ USD ${fmt(vv/USD)}`) : '';
-  document.getElementById('h-mc').textContent = mc > 0 ? (curMC==='usd' ? `≈ $ ${fmt(mc*USD)} ARS` : `≈ USD ${fmt(mc/USD)}`) : '';
-  // apoyo máximo en monto real
-  const vvARS = curVV==='usd' ? vv*USD : vv;
-  const maxARS = vvARS * banco.apoyo_max / 100;
-  const apoyoEl = document.getElementById('apoyoMaxMonto');
-  if(vv > 0){
-    apoyoEl.textContent = curVV==='usd'
-      ? `máx USD ${fmt(vv * banco.apoyo_max / 100)} (≈ $ ${fmt(maxARS)} ARS)`
-      : `máx $ ${fmt(maxARS)} ARS (≈ USD ${fmt(maxARS/USD)})`;
-  } else {
-    apoyoEl.textContent = 'ingresá el valor de la vivienda';
-  }
+  const vv=getARS('ValorVivienda',curVV),mc=getARS('Monto',curMC);
+  setText('h-vv',vv>0?(curVV==='usd'?'≈ $ '+fmt(vv)+' ARS':'≈ USD '+fmt(vv/USD)):'');
+  setText('h-mc',mc>0?(curMC==='usd'?'≈ $ '+fmt(mc)+' ARS':'≈ USD '+fmt(mc/USD)):'');
+  if(vv>0){
+    const terms=getBankTerms(vv,Math.max(mc,0),selectedYears('Plazo'));
+    const maximum=Math.min(terms.eligibleValue*terms.support/100,terms.maxLoan);
+    setText('apoyoMax',terms.support+'%');setText('apoyoMaxInline',terms.support+'%');
+    setText('apoyoMaxMonto','USD '+fmt(maximum/USD));
+  }else setText('apoyoMaxMonto','Ingresá el valor de la vivienda');
 }
-function onAmt(f){
-  updHints();
-  if(f==='vv') calcEscri();
-  updBolsillo();
-}
+function onAmt(){refreshSimulation();}
 function setMontoMax(){
-  const vv = parseNum(document.getElementById('ValorVivienda').value);
-  if(!vv) return;
-  const maxVal = vv * banco.apoyo_max / 100;
-  // usa la misma moneda que el campo de vivienda
-  curMC = curVV;
-  document.getElementById('tmc-ars').classList.toggle('on', curMC==='ars');
-  document.getElementById('tmc-usd').classList.toggle('on', curMC==='usd');
-  document.getElementById('Monto').placeholder = curMC==='usd' ? 'USD 0' : '$ 0';
-  document.getElementById('Monto').value = fmt(maxVal);
-  onAmt('mc');
+  try{
+    const vv=getARS('ValorVivienda',curVV),terms=getBankTerms(vv,0,selectedYears('Plazo'));
+    const maximum=Math.min(terms.eligibleValue*terms.support/100,terms.maxLoan);
+    $('Monto').value=fmt(curMC==='usd'?maximum/USD:maximum,2);refreshSimulation();
+  }catch(error){setText('simulationNotice',error.message);}
 }
-function setCur(f, c){
-  if(f==='vv'){
-    curVV=c;
-    document.getElementById('tvv-ars').classList.toggle('on', c==='ars');
-    document.getElementById('tvv-usd').classList.toggle('on', c==='usd');
-    document.getElementById('ValorVivienda').placeholder = c==='usd' ? 'USD 0' : '$ 0';
-  } else {
-    curMC=c;
-    document.getElementById('tmc-ars').classList.toggle('on', c==='ars');
-    document.getElementById('tmc-usd').classList.toggle('on', c==='usd');
-    document.getElementById('Monto').placeholder = c==='usd' ? 'USD 0' : '$ 0';
-  }
-  updHints();
-  if(f==='vv') calcEscri();
+function setCur(field,currency){
+  const id=field==='vv'?'ValorVivienda':'Monto',old=field==='vv'?curVV:curMC;
+  if(old===currency)return;
+  const amount=parseNum($(id).value),ars=old==='usd'?amount*USD:amount;
+  if(!Number.isFinite(ars)||!(USD>0)){setText('simulationNotice','Ingresá valores válidos antes de convertir monedas.');return;}
+  $(id).value=fmt(currency==='usd'?ars/USD:ars,2);
+  if(field==='vv')curVV=currency;else curMC=currency;
+  $(field==='vv'?'tvv-ars':'tmc-ars').classList.toggle('on',currency==='ars');
+  $(field==='vv'?'tvv-usd':'tmc-usd').classList.toggle('on',currency==='usd');
+  $(id).placeholder=currency==='usd'?'USD 0':'$ 0';refreshSimulation();
 }
-// ── escrituración ─────────────────────────────────────────
 function calcEscri(){
-  const v = getARS('ValorVivienda', curVV);
-  const el = document.getElementById('escriRes');
-  if(v <= 0){ el.innerHTML=''; escriTotal=0; updBolsillo(); return; }
-  const prov = document.getElementById('Provincia').value;
-  const prim = document.getElementById('PrimeraViv').checked;
-  const exento = prov==='caba' && prim && v < 226100000;
-  const comisionPct = parseNum(document.getElementById('ComisionPct').value) || 3;
-  const inmo = v*comisionPct/100, inmoIva = inmo*0.21;
-  const escr = v*0.015, escrIva = escr*0.21;
-  let selRate, selNote;
-  if(exento){ selRate=0; selNote='(exento — 1ª vivienda CABA < $226.1M)'; }
-  else if(prov==='caba'){ selRate=1.75; selNote='(3.5% total, comprador paga 50%)'; }
-  else if(prov==='pba'){ selRate=1.0; selNote='(Ley 15.558/2026: 2% total, comprador paga 50%)'; }
-  else{ selRate=1.5; selNote='(estimado)'; }
-  const sellos = v*selRate/100;
-  // Registro de la Propiedad: PBA = 0.2% (2‰, Ley 15.558/2026); CABA = 0.7%
-  const regRate = prov==='pba' ? 0.002 : 0.007;
-  const regLabel = prov==='pba' ? 'Registro de la Propiedad PBA (0,2% — 2‰, Ley 15.558/2026)' : 'Registro de la Propiedad CABA (0,7%)';
-  const reg = v*regRate;
-  // Certificados: PBA tiene más trámites que CABA
-  const certRate = prov==='pba' ? 0.005 : 0.002;
-  const certLabel = prov==='pba' ? 'Certificados, informes y gastos PBA (~0,5%)' : 'Certificados y gastos CABA (0,2%)';
-  const cert = v*certRate;
-  const refTotal = (inmo+inmoIva)+(escr+escrIva)+sellos+reg+cert;
-  const refPct = refTotal/v*100;
-  const pctEl = document.getElementById('customPct');
-  if(pctEl && !pctEl._touched) pctEl.value = fmt(refPct, 2);
-  const invE = document.getElementById('inv-escriPct');
-  if(invE && !invE._touched) invE.value = fmt(refPct, 2);
-  const customPct = pctEl ? (parseNum(pctEl.value)||refPct) : refPct;
-  const customTotal = v*customPct/100;
-  escriTotal = customTotal;
-  updBolsillo();
-  const rows = [
-    { name:`Comisión inmobiliaria (${fmt(comisionPct,2)}% + IVA 21%)`, pct:fmt(comisionPct*1.21,3), m:inmo+inmoIva, ex:false },
-    { name:'Honorarios escribano (1,5% + IVA 21%) — Ley 6925 PBA', pct:'1,815', m:escr+escrIva, ex:false },
-    { name:`Impuesto de sellos ${selNote}`, pct:selRate===0?'—':fmt(selRate,3)+'%', m:sellos, ex:exento },
-    { name:regLabel, pct:fmt(regRate*100,1), m:reg, ex:false },
-    { name:certLabel, pct:fmt(certRate*100,1), m:cert, ex:false },
-  ].map(r=>`<tr><td>${r.name}${r.ex?' <span class="exmt">EXENTO</span>':''}</td><td>${r.ex?'0%':r.pct}%</td><td>${r.ex?'<span class="exmt">$ 0</span>':'$ '+fmt(r.m)}</td></tr>`).join('');
-  el.innerHTML = `
-    <table class="et"><thead><tr><th>Concepto (referencia)</th><th>%</th><th>Monto ARS</th></tr></thead>
-    <tbody>${rows}<tr class="tr"><td>Subtotal referencia</td><td>${fmt(refPct,2)}%</td><td>$ ${fmt(refTotal)}</td></tr></tbody></table>
-    <div class="pct-box">
-      <label>% total parametrizable — ajustá según tu caso real</label>
-      <div class="pct-row">
-        <div class="irow">
-          <input type="text" id="customPct" value="${fmt(refPct,2)}" oninput="onCustomPct(this,${v})" style="width:80px;font-weight:700;color:var(--accent);border-color:var(--focus)">
-          <span style="color:var(--muted)">%</span>
-        </div>
-        <div class="pct-result">
-          Total escrituración:
-          <span class="v" id="customTotal">$ ${fmt(customTotal)}</span>
-          <span class="u" id="customTotalUSD">≈ USD ${fmt(customTotal/USD)}</span>
-        </div>
-      </div>
-    </div>`;
+  const property=getARS('ValorVivienda',curVV),loan=getARS('Monto',curMC);
+  if(!(property>0)||!Number.isFinite(loan)||loan<0){escriTotal=NaN;setText('escriRes','Ingresá importes válidos para la vivienda y el préstamo.');return;}
+  const costs=calculateClosingCosts(property,loan),custom=customClosingPct;
+  escriTotal=custom===null?costs.total:property*custom/100;
+  const rows=costs.rows.map((row,i)=>'<tr'+([1,2].includes(i)?' style="color:var(--muted)"':'')+'><td>'+row[0]+([1,2].includes(i)?' (detalle, no se suma dos veces)':'')+'</td><td>'+fmt(row[1]/property*100,3)+'%</td><td>$ '+fmt(row[1])+'</td></tr>').join('');
+  const warnings=[];
+  if(costs.settings.province==='pba'&&costs.settings.basic===null) warnings.push('Valuación fiscal básica desconocida: no se supone exención en la compra.');
+  if(costs.settings.province==='pba')warnings.push('Se considera un inmueble; inscripción simple o urgente según lo seleccionado. La distribución de aportes y la cantidad de certificados son estimaciones.');
+  if(costs.settings.province!=='pba')warnings.push('La inscripción y otros gastos fuera de PBA son provisorios; reemplazalos por un presupuesto.');
+  warnings.push('Agregá los gastos catastrales, el estudio de títulos y otros cargos del presupuesto del escribano. Los totales son estimaciones a las cotizaciones indicadas.');
+  $('escriRes').innerHTML='<table class="et"><thead><tr><th>Concepto</th><th>% de la compra</th><th>ARS</th></tr></thead><tbody>'+rows+'<tr class="tr"><td>Estimación desglosada</td><td>'+fmt(costs.total/property*100,3)+'%</td><td>$ '+fmt(costs.total)+'</td></tr></tbody></table><div class="hint" style="line-height:1.6;margin:8px 0">'+warnings.join(' ')+'</div><div class="pct-box"><label>Reemplazar el total de gastos (% de la compra) — opcional</label><div class="pct-row"><input id="customPct" value="'+(custom===null?'':fmt(custom,4))+'" placeholder="Estimación desglosada" oninput="onCustomPct(this)" style="width:100px"><div class="pct-result">Total: <span class="v" id="customTotal">$ '+fmt(escriTotal)+'</span><span class="u" id="customTotalUSD">≈ USD '+fmt(escriTotal/USD)+'</span></div></div></div>';
 }
-function onCustomPct(el, v){
-  el._touched = true;
-  const pct = parseNum(el.value)||0;
-  const total = v*pct/100;
-  escriTotal = total;
-  const t=document.getElementById('customTotal'), u=document.getElementById('customTotalUSD');
-  if(t) t.textContent='$ '+fmt(total);
-  if(u) u.textContent='≈ USD '+fmt(total/USD);
-  updBolsillo();
+function onCustomPct(el){
+  try{
+    customClosingPct=readPercent('customPct',{optional:true,max:100});
+    const property=getARS('ValorVivienda',curVV),costs=calculateClosingCosts(property,getARS('Monto',curMC));
+    escriTotal=customClosingPct===null?costs.total:property*customClosingPct/100;
+    setText('customTotal','$ '+fmt(escriTotal));setText('customTotalUSD','≈ USD '+fmt(escriTotal/USD));
+    updBolsillo();calcularInverso();
+    if(lastSim)lastSim.escriTotalARS=escriTotal;
+  }catch(error){escriTotal=NaN;setText('customTotal',error.message);updBolsillo();clearInverse();}
 }
-// ── de tu bolsillo ────────────────────────────────────────
 function updBolsillo(){
-  const vvARS = getARS('ValorVivienda', curVV);
-  const mcARS = getARS('Monto', curMC);
-  const dash = '—';
-  function set(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
-  if(!vvARS){ ['b-anticipo-pct','b-anticipo-ars','b-anticipo-usd','b-escri-pct','b-escri-ars','b-escri-usd','b-total-pct','b-total-ars','b-total-usd'].forEach(id=>set(id,dash)); return; }
-  const anticipo = Math.max(vvARS-mcARS, 0);
-  const antiPct = anticipo/vvARS*100;
-  const escPct  = escriTotal/vvARS*100;
-  const total   = anticipo+escriTotal;
-  const totPct  = total/vvARS*100;
-  set('b-anticipo-pct', fmt(antiPct,1)+'%');
-  set('b-anticipo-ars', '$ '+fmt(anticipo));
-  set('b-anticipo-usd', 'USD '+fmt(anticipo/USD));
-  set('b-escri-pct',  escriTotal>0 ? fmt(escPct,1)+'%' : dash);
-  set('b-escri-ars',  escriTotal>0 ? '$ '+fmt(escriTotal) : dash);
-  set('b-escri-usd',  escriTotal>0 ? 'USD '+fmt(escriTotal/USD) : dash);
-  set('b-total-pct',  fmt(escriTotal>0?totPct:antiPct,1)+'%');
-  set('b-total-ars',  '$ '+fmt(escriTotal>0?total:anticipo));
-  set('b-total-usd',  'USD '+fmt((escriTotal>0?total:anticipo)/USD));
-}
-// ── BNA calc ──────────────────────────────────────────────
-function cuotaFr(cap,tem,n){ return cap*tem/(1-Math.pow(1+tem,-n)); }
-function segIncendio(propUVA, monUVA){
-  const base = banco.seg_inc_on_loan ? monUVA : propUVA;
-  return base * banco.seg_inc / 12;
-}
-function IRR(vals, g){
-  const res=(v,d,r)=>{ let x=v[0]; for(let i=1;i<v.length;i++) x+=v[i]/Math.pow(r+1,(d[i]-d[0])/365); return x; };
-  const der=(v,d,r)=>{ let x=0; for(let i=1;i<v.length;i++){ let f=(d[i]-d[0])/365; x-=f*v[i]/Math.pow(r+1,f+1); } return x; };
-  const dates=vals.map((_,i)=>i*365);
-  let pos=false,neg=false; vals.forEach(v=>{ if(v>0)pos=true; if(v<0)neg=true; });
-  if(!pos||!neg) return g||0.005;
-  let r=g||0.005, iter=0;
-  do{ const nv=r-res(vals,dates,r)/der(vals,dates,r); const e=Math.abs(nv-r); r=nv; if(e<1e-10) break; }while(++iter<50);
-  return r;
-}
-function planDeCuotas(monUVA, propUVA, tem, nCuotas){
-  let cuotas=[], costos=[];
-  cuotas.push({sal:monUVA, cu:0, ct:-monUVA});
-  costos.push(-monUVA);
-  for(let n=1; n<=nCuotas; n++){
-    const sal = cuotas[n-1].sal;
-    const si = segIncendio(propUVA, monUVA);
-    const cu = cuotaFr(monUVA, tem, nCuotas-(n-1)); // recompute for precision? No, use fixed cuota
-    const cuFija = cuotaFr(monUVA, tem, nCuotas);
-    const int = sal*tem, cap = cuFija-int;
-    const nsal = Math.max(sal-cap, 0);
-    cuotas.push({sal:nsal, cu:cuFija, ct:cuFija+si});
-    costos.push(cuFija+si);
+  const property=getARS('ValorVivienda',curVV),loan=getARS('Monto',curMC);
+  const valid=Number.isFinite(property)&&property>0&&Number.isFinite(loan)&&loan>=0&&loan<=property&&Number.isFinite(escriTotal);
+  const advance=valid?property-loan:NaN,total=advance+escriTotal;
+  for(const [key,amount] of [['anticipo',advance],['escri',valid?escriTotal:NaN],['total',total]]){
+    setText('b-'+key+'-pct',Number.isFinite(amount)?fmt(amount/property*100,2)+'%':'—');
+    setText('b-'+key+'-ars',Number.isFinite(amount)?'$ '+fmt(amount):'—');
+    setText('b-'+key+'-usd',Number.isFinite(amount)?'USD '+fmt(amount/USD):'—');
   }
-  const cft_tem = IRR(costos, tem);
-  const cft_tea = Math.ceil((Math.pow(1+cft_tem,12)-1)*10000)/10000;
-  return {cuotas, cft_tem:cft_tem*100, cft_tna:cft_tem*12*100, cft_tea:cft_tea*100};
 }
-// ── errors ────────────────────────────────────────────────
-function setE(id,m){ const e=document.getElementById('e-'+id); if(e) e.textContent=m; }
-function clrE(id){ const e=document.getElementById('e-'+id); if(e) e.textContent=''; }
-function clrAll(){ ['Plazo','ValorVivienda','Monto'].forEach(clrE); }
-// ── main calculate ────────────────────────────────────────
+function setE(id,message){setText('e-'+id,message);}
+function clrAll(){for(const id of ['Plazo','ValorVivienda','Monto'])setE(id,'');}
 function calcular(){
-  clrAll();
-  const vvARS = getARS('ValorVivienda', curVV);
-  const mcARS = getARS('Monto', curMC);
-  const plazo = parseInt(document.getElementById('Plazo').value)||0;
-  let ok=true;
-  if(!plazo){ setE('Plazo','Campo obligatorio'); ok=false; }
-  if(!vvARS){ setE('ValorVivienda','Campo obligatorio'); ok=false; }
-  if(!mcARS){ setE('Monto','Campo obligatorio'); ok=false; }
-  if(!ok) return;
-  const propUVA = vvARS/UVA, monUVA = mcARS/UVA;
-  const tem = TNA/12/100;
-  const apoyo = monUVA/propUVA*100;
-  const nCuotas = plazo*12;
-  // get bank limits
-  const monMaxUVA = banco.mon_max_pesos ? banco.mon_max_pesos/UVA : banco.mon_max_uva;
-  const propMaxUVA = banco.prop_max_uva;
-  // validations
-  if(monUVA > monMaxUVA){ setE('Monto',`Monto máximo $ ${fmt(monMaxUVA*UVA)} (${fmt(monMaxUVA)} UVAs)`); return; }
-  if(monUVA < 15000){ setE('Monto',`Monto mínimo 15.000 UVAs ($ ${fmt(15000*UVA)})`); return; }
-  if(monUVA > propUVA){ setE('Monto','El monto no puede superar el valor de la vivienda'); return; }
-  if(propMaxUVA && propUVA > propMaxUVA){ setE('ValorVivienda',`El valor no puede superar ${fmt(propMaxUVA)} UVAs ($ ${fmt(propMaxUVA*UVA)})`); return; }
-  if(apoyo > banco.apoyo_max){ setE('Monto',`${banco.nombre} financia hasta el ${banco.apoyo_max}% del valor — apoyo actual: ${fmt(apoyo,1)}%`); return; }
-  const plan = planDeCuotas(monUVA, propUVA, tem, nCuotas);
-  const cuUva = plan.cuotas[1].cu;
-  const cuPesos = cuUva*UVA, cuUSD = cuPesos/USD;
-  const incNec = cuPesos*banco.mul_ingresos;
-  const incMin = incNec*0.5;
-  document.getElementById('r-apoyo').textContent = fmt(apoyo,1)+'%';
-  document.getElementById('r-cuuva').textContent = fmt(cuUva,2);
-  document.getElementById('r-propuva').textContent = fmt(propUVA,2);
-  document.getElementById('r-montouva').textContent = fmt(monUVA,2);
-  document.getElementById('r-ingrnec').textContent = '$ '+fmt(incNec);
-  document.getElementById('r-ingrmin').textContent = '$ '+fmt(incMin);
-  document.getElementById('r-cupesos').textContent = '$ '+fmt(cuPesos);
-  document.getElementById('r-cuusd').textContent = '≈ USD '+fmt(cuUSD);
-  document.getElementById('r-uva').textContent = fmt(UVA,2);
-  document.getElementById('r-tna').textContent = fmt(TNA,2)+'%';
-  document.getElementById('r-tem').textContent = fmt(TNA/12,2)+'%';
-  document.getElementById('r-cfttem').textContent = fmt(plan.cft_tem,2)+'%';
-  document.getElementById('r-cfttna').textContent = fmt(plan.cft_tna,2)+'%';
-  document.getElementById('r-cfttea').textContent = fmt(plan.cft_tea,2)+'%';
-  const segBase = banco.seg_inc_on_loan ? 'del monto prestado' : 'del valor de la propiedad';
-  const topeoNote = bancoId==='bna' ? ' BNA ofrece opción de prima por topeo CVS (CFTEA 8,73%).' : '';
-  const discCft = `(2) CFT incluye capital, intereses y seguro de incendio/hogar (${fmt(banco.seg_inc*100,3)}% anual ${segBase}).${topeoNote}`;
-  document.getElementById('disc').textContent = `Simulación para ${banco.nombre} · TNA ${fmt(TNA,2)}% · hasta ${banco.apoyo_max}% del valor de la propiedad. (1) Cuota calculada suponiendo períodos de 30 días. ${discCft} (3) Eximición de IVA sobre intereses conforme RG AFIP 680/99.`;
-  lastSim = { propARS: propUVA*UVA, monARS: monUVA*UVA, USD: USD, escriTotalARS: escriTotal, plan, tem, propUVA, monUVA, nCuotas };
-  document.getElementById('rs').classList.remove('hidden');
-  if(!document.getElementById('tab4-content').classList.contains('hidden')) renderAmortizacion();
+  clearSimulation();clrAll();
+  try{
+    if(!(UVA>0)||!(USD>0)||!Number.isFinite(UVA)||!Number.isFinite(USD))throw Error('Ingresá cotizaciones válidas.');
+    const property=getARS('ValorVivienda',curVV),loan=getARS('Monto',curMC),years=selectedYears('Plazo');
+    if(!Number.isFinite(property)||property<=0){setE('ValorVivienda','Ingresá un importe positivo.');return;}
+    if(!Number.isFinite(loan)||loan<=0){setE('Monto','Ingresá un importe positivo.');return;}
+    const terms=getBankTerms(property,loan,years);TNA=terms.rate;
+    if(property>terms.maxProperty||terms.eligibleValue>terms.maxProperty){setE('ValorVivienda','Límite de la propiedad: $ '+fmt(terms.maxProperty));return;}
+    if(loan<terms.minimum){setE('Monto','Préstamo mínimo: $ '+fmt(terms.minimum));return;}
+    if(loan>terms.maxLoan){setE('Monto','Préstamo máximo: $ '+fmt(terms.maxLoan));return;}
+    if(loan>terms.eligibleValue*terms.support/100+0.01){setE('Monto','El préstamo no puede superar el '+terms.support+'% del menor valor entre precio y tasación.');return;}
+    const plan=planDeCuotas(loan/UVA,property/UVA,terms.tem,terms.n,terms),rows=plan.cuotas.slice(1);
+    const first=rows[0],peak=Math.max(...rows.map(r=>r.ct)),regular=Math.min(...rows.map(r=>r.ct));
+    const bankPayment=Math.max(...rows.map(r=>r.cu+r.iva+r.prima));
+    const income=bankPayment*UVA*4,holderShare=bancoId==='bna'&&$('hasCodebt').checked?0.5:1;
+    lastSim={propARS:property,monARS:loan,USD,UVA,escriTotalARS:escriTotal,plan,tem:terms.tem,propUVA:property/UVA,monUVA:loan/UVA,nCuotas:terms.n,terms,years};
+    setText('r-apoyo',fmt(loan/terms.eligibleValue*100,2)+'%');
+    setText('r-cuuva',fmt(first.ct,2));setText('r-propuva',fmt(property/UVA,2));setText('r-montouva',fmt(loan/UVA,2));
+    setText('r-pure','$ '+fmt(first.cu*UVA));setText('r-insurance',terms.insuranceKnown?'$ '+fmt((terms.monthlyInsurance!==null?terms.monthlyInsurance*12:terms.annualInsurance)*UVA):'Se requiere presupuesto');
+    setText('r-peak','$ '+fmt(peak*UVA));
+    setText('r-ingrnec','$ '+fmt(income));
+    setText('r-budget-income',terms.insuranceKnown?'$ '+fmt(peak*UVA*4):'Se requiere cotización del seguro');
+    setText('r-cupesos','$ '+fmt(first.ct*UVA)+(terms.insuranceKnown?'':' + seguro pendiente de cotizar'));
+    setText('r-cuusd','≈ USD '+fmt(first.ct*UVA/USD));setText('r-uva',fmt(UVA,2));
+    setText('r-tna',fmt(TNA,2)+'%');setText('r-tem',fmt(TNA/12,4)+'%');
+    for(const key of ['tem','tna','tea'])setText('r-cft'+key,terms.insuranceKnown?fmt(plan['cft_'+key],3)+'%':'Incompleto');
+    $('approvedTNA').placeholder='Referencia publicada: '+fmt(terms.reference,2)+'%';
+    setText('rateHint','Referencia publicada: '+fmt(terms.reference,2)+'% · '+(terms.approved===null?'TNA aprobada sin informar':'TNA aprobada ingresada'));
+    const notes=['Períodos mensuales; los valores en ARS y USD son equivalentes actuales, no proyecciones. Los ingresos estimados excluyen otras deudas y las condiciones individuales de elegibilidad e ingreso mínimo.'];
+    if(terms.approved===null)notes.push('La TNA es la referencia pública vigente; reemplazala por tu tasa aprobada.');
+    if(terms.appraisalEstimated)notes.push('Se supone una tasación igual al precio.');
+    if(terms.insuranceEstimated&&terms.insuranceKnown)notes.push('El seguro es estimado. El simulador BNA cobra un 0,06% anual en los meses 1, 13, 25…; la cobertura real usa el valor de reconstrucción sin el terreno.');
+    if(!terms.insuranceKnown)notes.push('Ingresá la cotización del seguro para completar la cuota y el CFT.');
+    if(terms.premium>0)notes.push('La prima para el tope CVS comienza en el mes 7; no se proyectan el uso del tope ni la refinanciación de las diferencias.');
+    if(bancoId==='bbva')notes.push('El 7,5% requiere el paquete de productos del banco; incluí los productos adicionales cotizados. Ingreso mínimo del titular: 4 salarios mínimos vigentes.');
+    if(bancoId==='icbc')notes.push('Los ejemplos públicos de ICBC tienen una vigencia fechada; confirmá por separado la tasa vigente, el ingreso mínimo, el seguro y las comisiones por cancelación anticipada.');
+    setText('simulationNotice',notes.join(' '));
+    setText('disc','El CFT se calcula en UVA a partir de las cuotas y los seguros, IVA, prima y productos mensuales incluidos. Excluye la actualización por CER y los gastos de escrituración; no representa el costo efectivo futuro en pesos.');
+    $('rs').classList.remove('hidden');
+    if(!$('tab3-content').classList.contains('hidden'))calcularRiesgoCambiario();
+    if(!$('tab4-content').classList.contains('hidden')){renderAmortizacion();renderAdelantosResultado();}
+  }catch(error){setText('simulationNotice',error.message);}
 }
 function resetForm(){
-  document.getElementById('Plazo').value='20';
-  document.getElementById('ValorVivienda').value='180.000';
-  document.getElementById('Monto').value='135.000';
-  ['h-vv','h-mc'].forEach(id=>document.getElementById(id).textContent='');
-  updHints();
-  clrAll();
-  const rs=document.getElementById('rs'); rs.classList.remove('show'); rs.classList.add('hidden');
+  bancoId='bna';banco=BANCOS.bna;curVV=curMC='usd';customClosingPct=null;adelantos=[];
+  $('ValorVivienda').value='195.000';$('Monto').value='144.500';$('Plazo').value='30';$('inv-plazo').value='30';
+  $('ComisionPct').value='4';$('Provincia').value='pba';$('PrimeraViv').checked=true;
+  $('housingUse').value='primary';$('salaryAccount').checked=true;setBanco('bna');
+  for(const id of ['appraisalUSD','reconstructionARS','approvedTNA'])$(id).value='';
+  for(const x of ['vv','mc']){ $(x==='vv'?'tvv-ars':'tmc-ars').classList.remove('on');$(x==='vv'?'tvv-usd':'tmc-usd').classList.add('on');}
+  refreshSimulation();
 }
-// ── tab switching ─────────────────────────────────────────
 function showTab(n){
-  [1,2,3,4].forEach(function(i){
-    document.getElementById('tab'+i+'-content').classList.toggle('hidden', n!==i);
-    document.getElementById('t'+i).classList.toggle('on', n===i);
-  });
-  if(n===2) calcularInverso();
-  if(n===3) calcularRiesgoCambiario();
-  if(n===4) renderAmortizacion();
+  for(let i=1;i<=4;i++){ $('tab'+i+'-content').classList.toggle('hidden',n!==i);$('t'+i).classList.toggle('on',n===i);}
+  if(n===2)calcularInverso();
+  if(n===3)calcularRiesgoCambiario();
+  if(n===4){renderAmortizacion();renderAdelantosLista();renderAdelantosResultado();}
 }
-// ── tab 2 currency toggles ────────────────────────────────
-function setCurInv(f, c){
-  if(f==='bol'){
-    curBol=c;
-    document.getElementById('tbol-ars').classList.toggle('on', c==='ars');
-    document.getElementById('tbol-usd').classList.toggle('on', c==='usd');
-    document.getElementById('inv-bolsillo').placeholder = c==='usd' ? 'USD 0' : '$ 0';
-  } else {
-    curCumax=c;
-    document.getElementById('tcumax-ars').classList.toggle('on', c==='ars');
-    document.getElementById('tcumax-usd').classList.toggle('on', c==='usd');
-    document.getElementById('inv-cuotamax').placeholder = c==='usd' ? 'USD 0' : '$ 0';
-  }
-  calcularInverso();
+function setCurInv(field,currency){
+  const id=field==='bol'?'inv-bolsillo':'inv-cuotamax',old=field==='bol'?curBol:curCumax;
+  if(old===currency)return;
+  const amount=parseNum($(id).value),ars=old==='usd'?amount*USD:amount;
+  if(!Number.isFinite(ars)||!(USD>0)){setText('inv-error','Ingresá valores válidos antes de convertir.');return;}
+  $(id).value=amount===0&&$(id).value.trim()===''?'':fmt(currency==='usd'?ars/USD:ars,2);
+  if(field==='bol')curBol=currency;else curCumax=currency;
+  for(const c of ['ars','usd'])$(field==='bol'?'tbol-'+c:'tcumax-'+c).classList.toggle('on',currency===c);
+  $(id).placeholder=currency==='usd'?'USD 0':'$ 0';calcularInverso();
 }
-// ── calculadora inversa ───────────────────────────────────
+function clearInverse(){
+  for(const id of ['inv-propARS','inv-propUSD','inv-propUVA','inv-monARS','inv-monUSD','inv-monUVA','inv-cuotaARS','inv-ingresos','inv-apoyo-pct','inv-b-anticipo-pct','inv-b-anticipo-ars','inv-b-anticipo-usd','inv-b-escri-pct','inv-b-escri-ars','inv-b-escri-usd','inv-b-total-pct','inv-b-total-ars','inv-b-total-usd'])setText(id,'—');
+  setText('inv-cuotaUSD','');$('inv-badge').innerHTML='';
+  $('inv-sobrante').style.display=$('inv-deficit').style.display='none';
+}
+function solveMaximum(low,high,predicate){
+  for(let i=0;i<85;i++){const mid=(low+high)/2;if(predicate(mid))low=mid;else high=mid;}
+  return low;
+}
 function calcularInverso(){
-  const bolRaw   = parseNum(document.getElementById('inv-bolsillo').value);
-  const cuRaw    = parseNum(document.getElementById('inv-cuotamax').value);
-  const plazo    = parseInt(document.getElementById('inv-plazo').value) || 0;
-  const escriPct = parseNum(document.getElementById('inv-escriPct').value) || 7.1;
-
-  const bolsilloARS  = curBol   === 'usd' ? bolRaw * USD : bolRaw;
-  const cuotaMaxARS  = curCumax === 'usd' ? cuRaw  * USD : cuRaw;
-
-  // hints
-  const hb = document.getElementById('h-inv-bol');
-  const hc = document.getElementById('h-inv-cumax');
-  if(hb) hb.textContent = bolRaw>0 ? (curBol==='usd' ? `≈ $ ${fmt(bolRaw*USD)} ARS` : `≈ USD ${fmt(bolRaw/USD)}`) : '';
-  if(hc) hc.textContent = cuRaw>0  ? (curCumax==='usd' ? `≈ $ ${fmt(cuRaw*USD)} ARS` : `≈ USD ${fmt(cuRaw/USD)}`) : '';
-
-  const errEl    = document.getElementById('inv-error');
-  const badgeEl  = document.getElementById('inv-badge');
-  const sobrEl   = document.getElementById('inv-sobrante');
-  const defEl    = document.getElementById('inv-deficit');
-
-  function set(id, v){ const e=document.getElementById(id); if(e) e.textContent=v; }
-  function clearAll(){
-    const dash='—';
-    ['inv-propARS','inv-propUSD','inv-propUVA','inv-monARS','inv-monUSD','inv-monUVA',
-     'inv-cuotaARS','inv-ingresos','inv-apoyo-pct',
-     'inv-b-anticipo-pct','inv-b-anticipo-ars','inv-b-anticipo-usd',
-     'inv-b-escri-pct','inv-b-escri-ars','inv-b-escri-usd',
-     'inv-b-total-pct','inv-b-total-ars','inv-b-total-usd'
-    ].forEach(id=>set(id,dash));
-    set('inv-cuotaUSD','');
-    if(badgeEl) badgeEl.innerHTML='';
-    if(sobrEl) sobrEl.style.display='none';
-    if(defEl)  defEl.style.display='none';
-  }
-
-  if(!bolsilloARS && !cuotaMaxARS){ clearAll(); if(errEl) errEl.textContent=''; return; }
-  if(!plazo){ clearAll(); if(errEl) errEl.textContent='Seleccioná el plazo para ver los resultados.'; return; }
-  if(errEl) errEl.textContent='';
-
-  const tem          = banco.tna / 12 / 100;
-  const n            = plazo * 12;
-  const factor       = tem / (1 - Math.pow(1+tem, -n));
-  const apoyo_frac   = banco.apoyo_max / 100;
-  const monMaxBanco  = banco.mon_max_pesos ? banco.mon_max_pesos/UVA : banco.mon_max_uva;
-
-  // R1 — cuota (iterative para seguro de incendio)
-  let monMaxUVA_cuota = Infinity;
-  if(cuotaMaxARS > 0){
-    let m = (cuotaMaxARS/UVA) / factor;
-    for(let i=0; i<5; i++){
-      const segBase = banco.seg_inc_on_loan ? m : (m/apoyo_frac);
-      const seg = segBase * banco.seg_inc / 12;
-      m = Math.max((cuotaMaxARS/UVA - seg) / factor, 0);
+  clearInverse();setText('inv-error','');
+  try{
+    if(!(UVA>0)||!(USD>0)||!Number.isFinite(UVA)||!Number.isFinite(USD))throw Error('Ingresá cotizaciones válidas.');
+    const pocket=readAmount('inv-bolsillo',{optional:true}),maxPayment=readAmount('inv-cuotamax',{optional:true});
+    const budget=pocket===null?Infinity:pocket*(curBol==='usd'?USD:1);
+    const paymentLimit=maxPayment===null?Infinity:maxPayment*(curCumax==='usd'?USD:1);
+    if(pocket===null&&maxPayment===null)return;
+    const years=selectedYears('inv-plazo'),settings=getClosingSettings();
+    const override=readPercent('inv-escriPct',{optional:true})??customClosingPct;
+    const closing=(price,loan)=>override===null?calculateClosingCosts(price,loan,settings).total:price*override/100;
+    const scenarios=[];
+    const bands=bancoId==='bna'&&isPrimary()&&$('salaryAccount').checked?[[0,210000*UVA],[210000*UVA+0.01,350000*UVA]]:[[0,bancoId==='bna'?350000*UVA:Infinity]];
+    for(const [lower,upper] of bands){
+      if($('cvsCover').checked&&lower>210000*UVA) continue;
+      const sample=Math.max(lower+1,Math.min(100000*UVA,upper));
+      const preliminary=getBankTerms(sample,1,years,{ignoreAppraisal:true}),support=preliminary.support/100;
+      const propertyCeiling=Math.min(upper,preliminary.maxProperty);
+      const debtForPrice=price=>{
+        const terms=getBankTerms(price,1,years,{ignoreAppraisal:true});
+        let maxLoan=Math.min(terms.maxLoan,price*support);
+        if(Number.isFinite(paymentLimit)){
+          const feasible=loan=>{
+            const t=getBankTerms(price,loan,years,{ignoreAppraisal:true});
+            const pure=cuotaFr(loan/UVA,t.tem,t.n);
+            const insurance=t.monthlyInsurance!==null?t.monthlyInsurance:(t.insuranceTiming==='annual'?t.annualInsurance:t.annualInsurance/12);
+            return (pure+loan/UVA*t.tem*t.vatInterest+t.premium*(1+t.vatPremium)+insurance+t.monthlyProducts)*UVA<=paymentLimit+1e-7;
+          };
+          maxLoan=solveMaximum(0,maxLoan,feasible);
+        }
+        return maxLoan;
+      };
+      const affordable=price=>{
+        const loan=debtForPrice(price);
+        return loan>=preliminary.minimum&&price-loan+closing(price,loan)<=budget+1e-7;
+      };
+      let start=Math.max(lower,preliminary.minimum/support);
+      // A large property can be feasible despite a low-loan minimum boundary.
+      if(!Number.isFinite(budget)){
+        let high=Number.isFinite(propertyCeiling)?propertyCeiling:Math.max(start*2,1000000*UVA);
+        const maxPrice=solveMaximum(start,high,price=>debtForPrice(price)>=price*support-0.01);
+        const loan=debtForPrice(maxPrice);
+        if(loan>=preliminary.minimum&&maxPrice>=lower)scenarios.push({price:maxPrice,loan,terms:getBankTerms(maxPrice,loan,years,{ignoreAppraisal:true}),binding:'Escenario de financiación máxima'});
+        continue;
+      }
+      let high=Math.min(propertyCeiling,budget+Math.min(preliminary.maxLoan,Number.isFinite(paymentLimit)?paymentLimit*years*12:Infinity)+1);
+      if(!Number.isFinite(high))high=Math.max(start*2,budget*10);
+      if(high<start||!affordable(start))continue;
+      const price=solveMaximum(start,high,affordable),loan=debtForPrice(price);
+      if(loan>=preliminary.minimum)scenarios.push({price,loan,terms:getBankTerms(price,loan,years,{ignoreAppraisal:true}),binding:'Ahorros y límites del préstamo'});
     }
-    monMaxUVA_cuota = m;
-  }
-
-  // R2 — bolsillo
-  let monMaxUVA_bols = Infinity;
-  if(bolsilloARS > 0){
-    const pMaxBols = (bolsilloARS/UVA) / (1 - apoyo_frac + escriPct/100);
-    monMaxUVA_bols = Math.max(pMaxBols * apoyo_frac, 0);
-  }
-
-  const monMaxUVA  = Math.min(monMaxUVA_cuota, monMaxUVA_bols, monMaxBanco);
-  const propMaxUVA = monMaxUVA / apoyo_frac;
-
-  // Binding constraint
-  let binding;
-  if(monMaxBanco <= monMaxUVA_cuota && monMaxBanco <= monMaxUVA_bols){
-    binding = 'banco';
-  } else if(monMaxUVA_cuota <= monMaxUVA_bols){
-    binding = 'cuota';
-  } else {
-    binding = 'bolsillo';
-  }
-
-  // Minimum loan check
-  if(monMaxUVA < 15000){
-    clearAll();
-    if(errEl) errEl.textContent = `Con esos parámetros el crédito posible (${fmt(monMaxUVA,0)} UVAs) es menor al mínimo de 15.000 UVAs ($ ${fmt(15000*UVA)} / USD ${fmt(15000*UVA/USD)}). Aumentá el bolsillo o la cuota máxima.`;
-    return;
-  }
-
-  // Cuota resultante con seguro
-  const segMens = segIncendio(propMaxUVA, monMaxUVA);
-  const cuotaARS = (cuotaFr(monMaxUVA, tem, n) + segMens) * UVA;
-
-  // Bolsillo breakdown
-  const anticoARS    = propMaxUVA * (1-apoyo_frac) * UVA;
-  const escriMontoARS = propMaxUVA * UVA * escriPct / 100;
-  const totalBols    = anticoARS + escriMontoARS;
-  const totPct       = (1-apoyo_frac + escriPct/100) * 100;
-
-  // Badge
-  const badgeMap = {
-    cuota:    ['CUOTA','rbadge-cuota'],
-    bolsillo: ['BOLSILLO','rbadge-bolsillo'],
-    banco:    ['LÍMITE BANCO','rbadge-banco'],
-  };
-  const [bl,bc] = badgeMap[binding];
-  if(badgeEl) badgeEl.innerHTML = `<span class="rbadge ${bc}">${bl}</span>`;
-
-  // Fill results
-  set('inv-propARS', '$ '+fmt(propMaxUVA*UVA));
-  set('inv-propUSD', 'USD '+fmt(propMaxUVA*UVA/USD));
-  set('inv-propUVA', fmt(propMaxUVA,0)+' UVAs');
-  set('inv-monARS',  '$ '+fmt(monMaxUVA*UVA));
-  set('inv-monUSD',  'USD '+fmt(monMaxUVA*UVA/USD));
-  set('inv-monUVA',  fmt(monMaxUVA,0)+' UVAs');
-  set('inv-cuotaARS', '$ '+fmt(cuotaARS));
-  set('inv-cuotaUSD', '≈ USD '+fmt(cuotaARS/USD));
-  set('inv-ingresos', '$ '+fmt(cuotaARS*banco.mul_ingresos));
-
-  set('inv-apoyo-pct',       fmt((1-apoyo_frac)*100,1));
-  set('inv-b-anticipo-pct',  fmt((1-apoyo_frac)*100,1)+'%');
-  set('inv-b-anticipo-ars',  '$ '+fmt(anticoARS));
-  set('inv-b-anticipo-usd',  'USD '+fmt(anticoARS/USD));
-  set('inv-b-escri-pct',     fmt(escriPct,2)+'%');
-  set('inv-b-escri-ars',     '$ '+fmt(escriMontoARS));
-  set('inv-b-escri-usd',     'USD '+fmt(escriMontoARS/USD));
-  set('inv-b-total-pct',     fmt(totPct,1)+'%');
-  set('inv-b-total-ars',     '$ '+fmt(totalBols));
-  set('inv-b-total-usd',     'USD '+fmt(totalBols/USD));
-
-  // Sobrante / déficit
-  if(sobrEl) sobrEl.style.display='none';
-  if(defEl)  defEl.style.display='none';
-
-  if(binding==='cuota' && bolsilloARS>0){
-    const sobra = bolsilloARS - totalBols;
-    if(sobra > 0 && sobrEl){
-      sobrEl.textContent = `Te sobran $ ${fmt(sobra)} (USD ${fmt(sobra/USD)}) del bolsillo.`;
-      sobrEl.style.display='block';
+    if(!scenarios.length)throw Error('No hay una compra posible con estos ahorros, límite de cuota y mínimo del banco.');
+    const result=scenarios.sort((a,b)=>b.price-a.price)[0],price=result.price,loan=result.loan,terms=result.terms;
+    const plan=planDeCuotas(loan/UVA,price/UVA,terms.tem,terms.n,terms);
+    const peak=Math.max(...plan.cuotas.slice(1).map(r=>r.ct))*UVA;
+    const fees=closing(price,loan),advance=price-loan,total=advance+fees;
+    for(const [key,amount] of [['prop',price],['mon',loan]]){
+      setText('inv-'+key+'ARS','$ '+fmt(amount));setText('inv-'+key+'USD','USD '+fmt(amount/USD));setText('inv-'+key+'UVA',fmt(amount/UVA,2)+' UVAs');
     }
-  } else if(binding==='bolsillo' && cuotaMaxARS>0 && monMaxUVA_cuota > monMaxUVA+100){
-    const propCuota = monMaxUVA_cuota / apoyo_frac;
-    const bolsNec   = propCuota * UVA * (1-apoyo_frac + escriPct/100);
-    const extra     = bolsNec - bolsilloARS;
-    if(extra>0 && defEl){
-      defEl.textContent = `Te faltan $ ${fmt(extra)} (USD ${fmt(extra/USD)}) de bolsillo para aprovechar tu cuota máxima.`;
-      defEl.style.display='block';
+    setText('inv-cuotaARS','$ '+fmt(peak)+(terms.insuranceKnown?'':' + seguro pendiente de cotizar'));
+    setText('inv-cuotaUSD','Mayor cuota · ≈ USD '+fmt(peak/USD));
+    setText('inv-ingresos','$ '+fmt(Math.max(...plan.cuotas.slice(1).map(r=>r.cu+r.iva+r.prima))*UVA*4));
+    setText('inv-apoyo-pct',fmt(advance/price*100,2));
+    for(const [key,amount] of [['anticipo',advance],['escri',fees],['total',total]]){
+      setText('inv-b-'+key+'-pct',fmt(amount/price*100,2)+'%');setText('inv-b-'+key+'-ars','$ '+fmt(amount));setText('inv-b-'+key+'-usd','USD '+fmt(amount/USD));
     }
-  }
+    setText('inv-badge',result.binding);
+    if(Number.isFinite(budget)&&budget-total>1){setText('inv-sobrante','Ahorros sin usar: $ '+fmt(budget-total));$('inv-sobrante').style.display='block';}
+    if(!Number.isFinite(budget))setText('inv-error','Ahorros sin informar: se muestra un escenario de financiación máxima, no el precio máximo de compra.');
+    else if(!Number.isFinite(paymentLimit))setText('inv-error','Límite de cuota sin informar: no se verifica la capacidad de pago.');
+    else if(!terms.insuranceKnown)setText('inv-error','Falta cotizar el seguro: la cuota y la capacidad de compra son provisorias.');
+    else setText('inv-error','Se supone una tasación igual al precio de compra y ausencia de otras deudas. Los gastos pendientes de presupuesto siguen siendo estimaciones.');
+  }catch(error){clearInverse();setText('inv-error',error.message);}
 }
-// ── tab 3: riesgo cambiario ───────────────────────────────
 function calcularRiesgoCambiario(){
-  const emptyEl = document.getElementById('r3-empty');
-  const bodyEl  = document.getElementById('r3-body');
-  if(!lastSim){
-    emptyEl.classList.remove('hidden');
-    bodyEl.classList.add('hidden');
-    return;
-  }
-  emptyEl.classList.add('hidden');
-  bodyEl.classList.remove('hidden');
-
-  const { monARS, USD: USD0 } = lastSim;
-  const monUSD = monARS / USD0;
-
-  function set(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
-  set('r3-usd0',   '$ '+fmt(USD0,0)+' / USD');
-  set('r3-monars', '$ '+fmt(monARS,0));
-  set('r3-monusd', 'USD '+fmt(monUSD,0));
-
-  actualizarEscenarioPuntual();
+  $('r3-empty').classList.toggle('hidden',!!lastSim);$('r3-body').classList.toggle('hidden',!lastSim);
+  if(!lastSim)return;
+  setText('r3-usd0','$ '+fmt(lastSim.USD,2)+' / USD');setText('r3-monars','$ '+fmt(lastSim.monARS));
+  setText('r3-monusd','USD '+fmt(lastSim.monARS/lastSim.USD));actualizarEscenarioPuntual();
 }
-
 function actualizarEscenarioPuntual(){
-  if(!lastSim) return;
-  const d = parseFloat(document.getElementById('r3-delta').value) || 0;
-  document.getElementById('r3-delta-lbl').textContent = (d>0?'+':'')+d+'%';
-  const delta   = d/100;
-  const monARS  = lastSim.monARS;
-  const USD0    = lastSim.USD;
-  const monUSD  = monARS / USD0;          // lo que compraba al tipo base
-  const newUSD  = USD0 * (1+delta);
-  const monUSDnew = monARS / newUSD;      // lo que compra al nuevo tipo
-  const faltante  = monUSD - monUSDnew;   // = monUSD * delta/(1+delta)
-  function set(id,v){ const e=document.getElementById(id); if(e) e.textContent=v; }
-  set('r3-newusd',     '$ '+fmt(newUSD,0)+' / USD');
-  set('r3-monusd-new', 'USD '+fmt(monUSDnew,0));
-  set('r3-extra', faltante>0 ? '− USD '+fmt(faltante,0) : faltante<0 ? '+ USD '+fmt(-faltante,0) : 'Sin faltante');
+  if(!lastSim)return;
+  try{
+    const delta=Number($('r3-delta').value),uvaDelta=parseNum($('riskUVADelta').value);
+    if(!Number.isFinite(delta)||delta<=-100||!Number.isFinite(uvaDelta)||uvaDelta<=-100)throw Error('Las variaciones de cotización y UVA deben ser superiores a -100%.');
+    setText('r3-delta-lbl',(delta>0?'+':'')+delta+'%');
+    const fx=lastSim.USD*(1+delta/100),fixedUVA=$('riskLoanBasis').value==='uva';
+    const proceeds=lastSim.monARS*(fixedUVA?1+uvaDelta/100:1),dollars=proceeds/fx;
+    const shortfall=lastSim.monARS/lastSim.USD-dollars;
+    setText('r3-newusd','$ '+fmt(fx,2)+' / USD');setText('r3-monusd-new','USD '+fmt(dollars));
+    setText('r3-extra',shortfall>0?'− USD '+fmt(shortfall):shortfall<0?'+ USD '+fmt(-shortfall):'Sin faltante');
+  }catch(error){setText('r3-extra',error.message);}
 }
-// ── tab 4: amortización ───────────────────────────────────
-function renderAmortizacion(){
-  const nosim  = document.getElementById('t4-nosim');
-  const cont   = document.getElementById('t4-content');
-  const nosim2 = document.getElementById('t4-nosim2');
-  const aform  = document.getElementById('t4-adelanto-form');
-
-  if(!lastSim || !lastSim.plan){
-    nosim.classList.remove('hidden');
-    cont.classList.add('hidden');
-    nosim2.classList.remove('hidden');
-    aform.classList.add('hidden');
-    return;
+function monthsLabel(m){const y=Math.floor(m/12),r=m%12;return y&&r?y+' años '+r+' meses':y?y+' años':r+' meses';}
+function mesesLabel(m){return monthsLabel(m);}
+function addCalendarMonths(iso,months){
+  const [year,month,day]=iso.split('-').map(Number);
+  const lastDay=new Date(Date.UTC(year,month-1+months+1,0)).getUTCDate();
+  return new Date(Date.UTC(year,month-1+months,Math.min(day,lastDay)));
+}
+function feeApplies(terms,month){
+  if(terms.bankId==='bbva')return true; // Partial fee: contract takes precedence over generic rate-table wording.
+  if(terms.bankId==='icbc')return true; // Conservative until the user confirms the bank-specific waiver.
+  if(terms.loanDate){
+    const start=addCalendarMonths(terms.loanDate,0),quarter=addCalendarMonths(terms.loanDate,terms.n/4);
+    const days180=new Date(start.getTime()+180*86400000);
+    const cutoff=new Date(Math.max(quarter.getTime(),days180.getTime()));
+    return addCalendarMonths(terms.loanDate,month)<cutoff;
   }
-  nosim.classList.add('hidden');
-  cont.classList.remove('hidden');
-  nosim2.classList.add('hidden');
-  aform.classList.remove('hidden');
-
-  const c   = lastSim.plan.cuotas;
-  const tem = lastSim.tem;
-  const n   = c.length - 1;
-  const hasAdelantos = adelantos.length > 0;
-
-  const scale    = curAmort === 'uva' ? 1 : curAmort === 'ars' ? UVA : UVA / USD;
-  const prefix   = curAmort === 'uva' ? '' : curAmort === 'ars' ? '$ ' : 'USD ';
-  const decimals = curAmort === 'uva' ? 2 : 0;
-  const unit     = curAmort === 'uva' ? ' (UVA)' : curAmort === 'ars' ? ' (ARS)' : ' (USD)';
-
-  document.getElementById('t4-note').textContent = curAmort !== 'uva' ? `al UVA $ ${fmt(UVA,2)}` : '';
-  document.getElementById('t4-uva-val').textContent = fmt(UVA,2);
-
-  // update column headers and show/hide extra columns
-  const hdrs = {sal0:'Saldo inicial', int:'Interés', cap:'Capital', seg:'Seguro', cu:'Cuota total', sal1:'Saldo final'};
-  Object.keys(hdrs).forEach(k => {
-    const el = document.getElementById('at-h-'+k);
-    if(el) el.textContent = hdrs[k]+unit;
-  });
-  const hAdel = document.getElementById('at-h-adel');
-  const hAcum = document.getElementById('at-h-acum');
-  hAdel.classList.toggle('hidden', !hasAdelantos);
-  hAcum.classList.toggle('hidden', !hasAdelantos);
-  if(hasAdelantos){
-    hAdel.textContent = 'Adelanto'+unit;
-    hAcum.textContent = 'Acum. adelantado'+unit;
-  }
-
-  const monUVA0 = c[0].sal;
-  let totalInt, totalSeg, totalComision = 0, mesesActual, tableRows = '';
-
-  if(hasAdelantos){
-    const sched = buildScheduleConAdelantos();
-    totalInt = sched.totalIntUVA;
-    totalSeg = sched.totalSegUVA;
-    totalComision = sched.totalComisionUVA;
-    mesesActual = sched.mesesFinal;
-
-    tableRows = sched.rows.map(r => {
-      let adelContent = '—';
-      if(r.esAdelanto){
-        adelContent = `${prefix}${fmt(r.adelantoUVA*scale, decimals)}`;
-        if(r.enPrimerCuarto && r.comisionUVA > 0)
-          adelContent += `<br><span style="font-size:10px;color:var(--warn)">⚠ comisión: ${prefix}${fmt(r.comisionUVA*scale, decimals)}</span>`;
-      }
-      const acumContent = r.acumUVA > 0 ? `${prefix}${fmt(r.acumUVA*scale, decimals)}` : '—';
-      const cuotaContent = r.cuota > 0 ? `${prefix}${fmt(r.cuota*scale, decimals)}` : '—';
-      return `<tr${r.esAdelanto?' class="at-pre"':''}>
-        <td>${r.m}</td>
-        <td>${prefix}${fmt(r.salIni*scale, decimals)}</td>
-        <td>${prefix}${fmt(r.interes*scale, decimals)}</td>
-        <td>${prefix}${fmt(r.capital*scale, decimals)}</td>
-        <td>${prefix}${fmt(r.seguro*scale, decimals)}</td>
-        <td>${cuotaContent}</td>
-        <td>${adelContent}</td>
-        <td>${acumContent}</td>
-        <td>${prefix}${fmt(r.salFin*scale, decimals)}</td>
-      </tr>`;
-    }).join('');
-
-  } else {
-    totalInt = 0; totalSeg = 0; mesesActual = n;
-    for(let i=1; i<=n; i++){
-      totalInt += c[i-1].sal * tem;
-      totalSeg += c[i].ct - c[i].cu;
-    }
-    for(let i=1; i<=n; i++){
-      const salIni = c[i-1].sal;
-      const interes = salIni * tem;
-      const capital = c[i].cu - interes;
-      const seguro  = c[i].ct - c[i].cu;
-      const salFin  = c[i].sal;
-      tableRows += `<tr>
-        <td>${i}</td>
-        <td>${prefix}${fmt(salIni*scale, decimals)}</td>
-        <td>${prefix}${fmt(interes*scale, decimals)}</td>
-        <td>${prefix}${fmt(capital*scale, decimals)}</td>
-        <td>${prefix}${fmt(seguro*scale, decimals)}</td>
-        <td>${prefix}${fmt(c[i].ct*scale, decimals)}</td>
-        <td>${prefix}${fmt(salFin*scale, decimals)}</td>
-      </tr>`;
-    }
-  }
-
-  const plazoLabel = hasAdelantos
-    ? `Nuevo plazo: ${mesesActual} m / ${mesesLabel(mesesActual)}`
-    : `${n} meses / ${Math.round(n/12)} años`;
-  const comisionRow = (hasAdelantos && totalComision > 0)
-    ? `<li style="color:var(--warn)">Comisión cancelación anticipada<span style="color:var(--warn)">${prefix}${fmt(totalComision*scale, decimals)}</span></li>`
-    : '';
-
-  document.getElementById('t4-summary').innerHTML = `
-    <div class="rbox">
-      <div class="bh">Totales ${hasAdelantos ? 'con pagos anticipados' : 'del crédito'}</div>
-      <ul>
-        <li>Capital prestado<span>${prefix}${fmt(monUVA0*scale, decimals)}</span></li>
-        <li>Total intereses<span>${prefix}${fmt(totalInt*scale, decimals)}</span></li>
-        <li>Total seguro<span>${prefix}${fmt(totalSeg*scale, decimals)}</span></li>
-        ${comisionRow}
-      </ul>
-      <div class="tot"><span>Costo total</span><span class="tv">${prefix}${fmt((monUVA0+totalInt+totalSeg+totalComision)*scale, decimals)}</span></div>
-    </div>
-    <div class="rbox">
-      <div class="bh">Por cuota (${plazoLabel})</div>
-      <ul>
-        <li>Cuota capital + interés<span>${prefix}${fmt(c[1].cu*scale, decimals)}</span></li>
-        <li>Seguro mensual<span>${prefix}${fmt((c[1].ct-c[1].cu)*scale, decimals)}</span></li>
-        <li>Cuota total con seguro<span>${prefix}${fmt(c[1].ct*scale, decimals)}</span></li>
-      </ul>
-      <div class="tot"><span>Interés / capital</span><span class="tv">${fmt(totalInt/monUVA0*100,1)}%</span></div>
-    </div>`;
-
-  document.getElementById('t4-tbody').innerHTML = tableRows;
+  return month<Math.max(terms.n/4,6);
 }
-
-function setCurAmort(c){
-  curAmort = c;
-  ['uva','ars','usd'].forEach(x => document.getElementById('tam-'+x).classList.toggle('on', x===c));
-  renderAmortizacion();
+function remainingMonths(balance,payment,tem){
+  if(balance<=1e-8)return 0;
+  if(tem===0)return Math.ceil(balance/payment-1e-10);
+  if(payment<=balance*tem)return Infinity;
+  return Math.ceil(-Math.log1p(-balance*tem/payment)/Math.log1p(tem)-1e-10);
 }
-
-
-// ── pagos anticipados (siempre reducen plazo) ─────────────
-
-function mesesLabel(m){
-  const a=Math.floor(m/12), mo=m%12;
-  return a>0 && mo>0 ? `${a}a ${mo}m` : a>0 ? `${a} años` : `${mo} meses`;
-}
-
-function estimarMesesRestantes(sal, cuotaUVA, tem){
-  let s=sal, cnt=0;
-  while(s>0.001 && cnt<1200){ const im=s*tem; s=Math.max(s-(cuotaUVA-im),0); cnt++; }
-  return cnt;
-}
-
+function estimarMesesRestantes(balance,payment,tem){return remainingMonths(balance,payment,tem);}
 function buildScheduleConAdelantos(){
-  if(!lastSim||!lastSim.plan) return null;
-  const c=lastSim.plan.cuotas, tem=lastSim.tem, n=c.length-1;
-  const cuotaUVA=c[1].cu;
-  const segMens=c[1].ct-c[1].cu;
-  const threshold=Math.max(Math.ceil(n/4),6);
-
-  let intOrig=0;
-  for(let i=1;i<=n;i++) intOrig+=c[i-1].sal*tem;
-
-  const byMonth={};
-  adelantos.forEach(a=>{ byMonth[a.mes]=(byMonth[a.mes]||0)+a.usd; });
-
-  let sal=c[0].sal, m=0, intNuevo=0, totalSeg=0, totalComision=0, acumUVA=0;
-  const rows=[], events=[];
-
-  while(sal>0.001 && m<n*2){
-    m++;
-    const balStart=sal;
-    const enPrimerCuarto=m<=threshold;
-    let adelantoUVA=0, comisionUVA=0;
-
-    if(byMonth[m]){
-      adelantoUVA=Math.min(byMonth[m]*USD/UVA, sal);
-      sal=Math.max(sal-adelantoUVA,0);
-      acumUVA+=adelantoUVA;
-      if(enPrimerCuarto){
-        comisionUVA=adelantoUVA*COMISION_ADELANTO;
-        totalComision+=comisionUVA;
-      }
-      const remM=estimarMesesRestantes(sal,cuotaUVA,tem);
-      events.push({mes:m, usd:byMonth[m], extraUVA:adelantoUVA, comisionUVA,
-                   saldoPost:sal, plazoTotal:m-1+remM, enPrimerCuarto});
-      if(sal<=0.001){
-        rows.push({m, salIni:balStart, interes:0, capital:0, seguro:0, cuota:0, salFin:0,
-                   adelantoUVA, comisionUVA, acumUVA, esAdelanto:true, enPrimerCuarto});
-        break;
-      }
+  if(!lastSim)return null;
+  const {terms,plan,monUVA,nCuotas:n}=lastSim;
+  const byMonth=new Map();
+  for(const advance of adelantos)byMonth.set(advance.mes,(byMonth.get(advance.mes)||0)+advance.usd);
+  let balance=monUVA,payment=plan.cuotas[1].cu,accumulated=0;
+  const rows=[],events=[];
+  for(let m=1;m<=n&&balance>1e-8;m++){
+    const salIni=balance,interes=balance*terms.tem,capital=Math.min(balance,Math.max(payment-interes,0));
+    const pure=capital+interes,extra=extraPayment(terms,m,interes);
+    balance=Math.max(balance-capital,0);
+    const requestedUSD=byMonth.get(m)||0;
+    const adelantoUVA=Math.min(requestedUSD*lastSim.USD/lastSim.UVA,balance);
+    const totalCancellation=adelantoUVA>0&&adelantoUVA>=balance-1e-8;
+    const waived=(terms.bankId==='bbva'&&totalCancellation)?!((terms.loanDate?addCalendarMonths(terms.loanDate,m)<new Date(Math.max(addCalendarMonths(terms.loanDate,n/4).getTime(),addCalendarMonths(terms.loanDate,0).getTime()+180*86400000)):m<Math.max(n/4,6))):!feeApplies(terms,m);
+    const comisionUVA=waived?0:adelantoUVA*terms.prepaymentRate;
+    balance=Math.max(balance-adelantoUVA,0);accumulated+=adelantoUVA;
+    if(adelantoUVA>0){
+      if(terms.prepaymentStrategy==='payment'&&balance>1e-8&&m<n)payment=cuotaFr(balance,terms.tem,n-m);
+      const remaining=terms.prepaymentStrategy==='payment'&&balance>1e-8?n-m:remainingMonths(balance,payment,terms.tem);
+      events.push({mes:m,usd:adelantoUVA*lastSim.UVA/lastSim.USD,requestedUSD,extraUVA:adelantoUVA,comisionUVA,saldoPost:balance,plazoTotal:m+remaining,enPrimerCuarto:comisionUVA>0});
     }
-
-    const interes=sal*tem;
-    const capital=cuotaUVA-interes;
-    const salFin=Math.max(sal-capital,0);
-    intNuevo+=interes;
-    totalSeg+=segMens;
-    sal=salFin;
-
-    rows.push({m, salIni:balStart, interes, capital, seguro:segMens, cuota:cuotaUVA,
-               salFin, adelantoUVA, comisionUVA, acumUVA,
-               esAdelanto:adelantoUVA>0, enPrimerCuarto});
+    const extras=extra.seguro+extra.iva+extra.prima+extra.products;
+    rows.push({m,salIni,interes,capital,seguro:extra.seguro,iva:extra.iva,prima:extra.prima,products:extra.products,extras,
+      cuota:pure+extras,salFin:balance,adelantoUVA,comisionUVA,acumUVA:accumulated,esAdelanto:adelantoUVA>0,enPrimerCuarto:comisionUVA>0});
   }
-
-  return {rows, events, totalIntUVA:intNuevo, totalSegUVA:totalSeg,
-          totalComisionUVA:totalComision, mesesFinal:m, mesesAhorrados:n-m,
-          intOrig, intAhorro:intOrig-intNuevo, cuotaUVA, n, monUVA0:c[0].sal};
+  const total=field=>rows.reduce((v,r)=>v+(r[field]||0),0);
+  const intOrig=plan.cuotas.slice(1).reduce((v,r)=>v+r.interes,0);
+  const originalCost=plan.cuotas.slice(1).reduce((v,r)=>v+r.ct,0);
+  const actualCost=total('cuota')+total('adelantoUVA')+total('comisionUVA');
+  return {rows,events,totalIntUVA:total('interes'),totalSegUVA:total('seguro'),totalExtraUVA:total('extras'),
+    totalComisionUVA:total('comisionUVA'),mesesFinal:rows.length,mesesAhorrados:n-rows.length,intOrig,
+    intAhorro:intOrig-total('interes'),netSaving:originalCost-actualCost,actualCost,originalCost,cuotaUVA:plan.cuotas[1].cu,n,monUVA0:monUVA};
 }
-
-function simularAdelantos(){
-  if(!lastSim||!lastSim.plan||adelantos.length===0) return null;
-  return buildScheduleConAdelantos();
+function simularAdelantos(){return adelantos.length?buildScheduleConAdelantos():null;}
+function renderAmortizacion(){
+  $('t4-nosim').classList.toggle('hidden',!!lastSim);$('t4-content').classList.toggle('hidden',!lastSim);
+  $('t4-nosim2').classList.toggle('hidden',!!lastSim);$('t4-adelanto-form').classList.toggle('hidden',!lastSim);
+  if(!lastSim)return;
+  const schedule=buildScheduleConAdelantos(),has=adelantos.length>0;
+  const scale=curAmort==='uva'?1:curAmort==='ars'?lastSim.UVA:lastSim.UVA/lastSim.USD;
+  const prefix=curAmort==='uva'?'':curAmort==='ars'?'$ ':'USD ',d=curAmort==='uva'?4:2;
+  const money=v=>prefix+fmt(v*scale,d),unit=' ('+curAmort.toUpperCase()+')';
+  setText('t4-note','Con la UVA de la simulación de $ '+fmt(lastSim.UVA,2)+' y cotización USD / ARS '+fmt(lastSim.USD,2));
+  setText('t4-uva-val',fmt(lastSim.UVA,2));
+  for(const [key,label] of Object.entries({sal0:'Saldo inicial',int:'Interés',cap:'Capital',seg:'Seguro / IVA / prima / productos',cu:'Cuota total',sal1:'Saldo final'}))setText('at-h-'+key,label+unit);
+  $('at-h-adel').classList.toggle('hidden',!has);$('at-h-acum').classList.toggle('hidden',!has);
+  setText('at-h-adel','Adelanto / comisión'+unit);setText('at-h-acum','Adelantos acumulados'+unit);
+  $('t4-tbody').innerHTML=schedule.rows.map(r=>'<tr'+(r.esAdelanto?' class="at-pre"':'')+'><td>'+r.m+'</td><td>'+money(r.salIni)+'</td><td>'+money(r.interes)+'</td><td>'+money(r.capital)+'</td><td>'+money(r.extras)+'</td><td>'+money(r.cuota)+'</td>'+(has?'<td>'+money(r.adelantoUVA)+(r.comisionUVA?'<br>Comisión: '+money(r.comisionUVA):'')+'</td><td>'+money(r.acumUVA)+'</td>':'')+'<td>'+money(r.salFin)+'</td></tr>').join('');
+  const payments=schedule.rows.map(r=>r.cuota);
+  $('t4-summary').innerHTML='<div class="rbox"><div class="bh">Total de pagos a la UVA actual</div><ul><li>Capital<span>'+money(lastSim.monUVA)+'</span></li><li>Interés<span>'+money(schedule.totalIntUVA)+'</span></li><li>Seguro / IVA / prima / productos<span>'+money(schedule.totalExtraUVA)+'</span></li><li>Comisiones por cancelación anticipada<span>'+money(schedule.totalComisionUVA)+'</span></li></ul><div class="tot"><span>Total pagado</span><span class="tv">'+money(schedule.actualCost)+'</span></div></div><div class="rbox"><div class="bh">Plazo: '+schedule.mesesFinal+' meses</div><ul><li>Primera cuota total<span>'+money(payments[0])+'</span></li><li>Mayor cuota total<span>'+money(Math.max(...payments))+'</span></li><li>Ahorro neto en pagos<span>'+money(schedule.netSaving)+'</span></li></ul><div class="hint">Los cargos anuales del seguro siguen la frecuencia seleccionada. Los valores usan las cotizaciones actuales; no se proyectan la UVA ni el tipo de cambio futuros.</div></div>';
 }
-
+function setCurAmort(currency){
+  curAmort=currency;for(const x of ['uva','ars','usd'])$('tam-'+x).classList.toggle('on',x===currency);renderAmortizacion();
+}
 function renderAdelantosLista(){
-  const tbody=document.getElementById('a-lista-tbody');
-  const wrap=document.getElementById('a-lista-wrap');
-  if(adelantos.length===0){ wrap.classList.add('hidden'); return; }
-  wrap.classList.remove('hidden');
-  const sorted=[...adelantos].sort((a,b)=>a.mes-b.mes);
-  tbody.innerHTML=sorted.map(a=>`
-    <tr>
-      <td style="text-align:center;font-weight:700">${a.mes}</td>
-      <td style="text-align:right">USD ${fmt(a.usd)}</td>
-      <td style="text-align:right;color:var(--muted)">$ ${fmt(a.usd*USD)}</td>
-      <td style="text-align:center">
-        <button class="btn-s" onclick="editarAdelanto(${a.id})" style="padding:2px 8px;font-size:11px;margin-right:3px">✎</button>
-        <button class="btn-s" onclick="eliminarAdelanto(${a.id})" style="padding:2px 8px;font-size:11px;color:var(--err);border-color:var(--err)">✕</button>
-      </td>
-    </tr>`).join('');
+  $('a-lista-wrap').classList.toggle('hidden',adelantos.length===0);
+  const scale=lastSim?.USD??USD;
+  $('a-lista-tbody').innerHTML=[...adelantos].sort((a,b)=>a.mes-b.mes).map(a=>'<tr><td>'+a.mes+'</td><td>USD '+fmt(a.usd,2)+'</td><td>$ '+fmt(a.usd*scale,2)+'</td><td><button class="btn-s" onclick="editarAdelanto('+a.id+')">Editar</button> <button class="btn-s" onclick="eliminarAdelanto('+a.id+')">Eliminar</button></td></tr>').join('');
 }
-
 function renderAdelantosResultado(){
-  const res=buildScheduleConAdelantos();
-  const el=document.getElementById('t4-adelanto-result');
-  if(!res||!res.events||res.events.length===0){ el.classList.add('hidden'); return; }
-  el.classList.remove('hidden');
-
-  const {events,mesesFinal,n,intAhorro,mesesAhorrados,totalComisionUVA}=res;
-  const fU=v=>'USD '+fmt(v*UVA/USD);
-  const hasComision=totalComisionUVA>0;
-  const intAhorroNeto=intAhorro-totalComisionUVA;
-  const anyPrimerCuarto=events.some(e=>e.enPrimerCuarto);
-
-  el.innerHTML=`
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center">
-        <div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Plazo original</div>
-          <div style="font-size:16px;font-weight:700">${n} meses</div>
-          <div style="font-size:11px;color:var(--muted)">${mesesLabel(n)}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Nuevo plazo</div>
-          <div style="font-size:16px;font-weight:700;color:var(--ok)">${mesesFinal} meses</div>
-          <div style="font-size:11px;color:var(--muted)">${mesesLabel(mesesFinal)}</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px">Ahorro total</div>
-          <div style="font-size:16px;font-weight:700;color:var(--ok)">${mesesAhorrados>0?`−${mesesAhorrados} meses`:'Sin cambio'}</div>
-          <div style="font-size:11px;color:var(--ok)">${mesesAhorrados>0?`${fU(intAhorroNeto)} en intereses${hasComision?' (neto)':''}`:''}</div>
-          ${hasComision?`<div style="font-size:10px;color:var(--warn);margin-top:2px">comisión pagada: ${fU(totalComisionUVA)}</div>`:''}
-        </div>
-      </div>
-    </div>
-    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Impacto de cada pago</div>
-    <div class="at-wrap">
-      <table class="at">
-        <thead>
-          <tr>
-            <th style="text-align:center;width:36px">#</th>
-            <th style="text-align:center">Mes</th>
-            <th>Adelanto</th>
-            <th>Saldo post-pago</th>
-            <th>Nuevo plazo</th>
-            <th>Meses ahorrados</th>
-            ${anyPrimerCuarto?'<th style="color:var(--warn)">Comisión</th>':''}
-          </tr>
-        </thead>
-        <tbody>
-          ${events.map((ev,i)=>`
-            <tr>
-              <td>${i+1}</td>
-              <td>${ev.mes}</td>
-              <td>USD ${fmt(ev.usd)}</td>
-              <td>${fU(ev.saldoPost)}<br><span style="color:var(--muted);font-size:10px">${fmt(ev.saldoPost,0)} UVAs</span></td>
-              <td style="color:var(--ok)">${ev.plazoTotal} m<br><span style="font-size:10px">${mesesLabel(ev.plazoTotal)}</span></td>
-              <td style="color:var(--ok)">−${n-ev.plazoTotal} m</td>
-              ${anyPrimerCuarto?`<td style="color:var(--warn)">${ev.comisionUVA>0?fU(ev.comisionUVA):'—'}</td>`:''}
-            </tr>`).join('')}
-        </tbody>
-      </table>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-top:6px">
-      * La cuota mensual no cambia. Los valores se expresan al UVA actual ($ ${fmt(UVA,2)}). Los pagos anticipados siempre reducen el plazo.
-    </div>`;
+  const schedule=buildScheduleConAdelantos();
+  $('t4-adelanto-result').classList.toggle('hidden',!schedule||adelantos.length===0);
+  if(!schedule||adelantos.length===0)return;
+  const money=v=>'USD '+fmt(v*lastSim.UVA/lastSim.USD,2);
+  const rows=schedule.events.map((ev,i)=>'<tr><td>'+(i+1)+'</td><td>'+ev.mes+'</td><td>USD '+fmt(ev.usd,2)+(ev.requestedUSD-ev.usd>0.01?'<br>Solicitado: USD '+fmt(ev.requestedUSD,2):'')+'</td><td>'+money(ev.saldoPost)+'</td><td>'+ev.plazoTotal+' meses</td><td>'+(schedule.n-ev.plazoTotal)+'</td><td>'+money(ev.comisionUVA)+'</td></tr>').join('');
+  const ignored=adelantos.filter(a=>a.mes>schedule.mesesFinal).length;
+  $('t4-adelanto-result').innerHTML='<div class="rbox"><div class="bh">Original '+schedule.n+' meses → '+schedule.mesesFinal+' meses</div><ul><li>Intereses ahorrados<span>'+money(schedule.intAhorro)+'</span></li><li>Comisiones por cancelación anticipada<span>'+money(schedule.totalComisionUVA)+'</span></li><li>Ahorro neto incluidos los cargos evitados<span>'+money(schedule.netSaving)+'</span></li></ul></div><div class="at-wrap"><table class="at"><thead><tr><th>#</th><th>Mes</th><th>Adelanto aplicado</th><th>Saldo tras el adelanto</th><th>Nuevo plazo total</th><th>Meses ahorrados</th><th>Comisión</th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="hint" style="line-height:1.6;margin-top:8px">Los adelantos se aplican después de la cuota habitual de ese mes. La conversión usa la UVA y la cotización de la simulación. La comisión se agrega al importe aplicado al capital. '+(ignored?ignored+' adelantos solicitados ocurren después de la cancelación y no se aplican. ':'')+(lastSim.terms.loanDate?'Las fechas siguen los aniversarios mensuales del desembolso.':'La fecha de exención de comisión usa una aproximación mensual; ingresá la fecha de desembolso para calcularla por calendario.')+' Confirmá con el banco la modalidad, los reintegros de seguros y las comisiones.</div>';
 }
-
 function agregarAdelanto(){
-  const errEl=document.getElementById('a-err');
-  errEl.textContent='';
-  if(!lastSim||!lastSim.plan){ errEl.textContent='Primero simulá un crédito.'; return; }
-  const n=lastSim.plan.cuotas.length-1;
-  const mes=Math.round(parseNum(document.getElementById('a-mes').value));
-  const usd=parseNum(document.getElementById('a-monto').value);
-  if(!mes||mes<1||mes>n){ errEl.textContent=`Mes inválido (1–${n})`; return; }
-  if(!usd||usd<=0){ errEl.textContent='Ingresá un monto en USD mayor a 0'; return; }
-  adelantos.push({id:++adelantoSig, mes, usd});
-  document.getElementById('a-mes').value='';
-  document.getElementById('a-monto').value='';
-  renderAdelantosLista();
-  renderAdelantosResultado();
-  renderAmortizacion();
+  setText('a-err','');
+  try{
+    if(!lastSim)throw Error('Primero simulá un préstamo válido.');
+    const mes=readAmount('a-mes',{min:1,max:lastSim.nCuotas}),usd=readAmount('a-monto',{min:0.01});
+    if(!Number.isInteger(mes))throw Error('El mes debe ser un número entero.');
+    const existing=buildScheduleConAdelantos();
+    if(mes>existing.mesesFinal)throw Error('Este adelanto ocurre después de que el préstamo ya fue cancelado.');
+    adelantos.push({id:++adelantoSig,mes,usd});$('a-mes').value='';$('a-monto').value='';
+    renderAdelantosLista();renderAdelantosResultado();renderAmortizacion();
+  }catch(error){setText('a-err',error.message);}
 }
-
 function eliminarAdelanto(id){
-  adelantos=adelantos.filter(a=>a.id!==id);
-  renderAdelantosLista();
-  renderAdelantosResultado();
-  renderAmortizacion();
+  adelantos=adelantos.filter(a=>a.id!==id);renderAdelantosLista();renderAdelantosResultado();renderAmortizacion();
 }
-
 function editarAdelanto(id){
-  const a=adelantos.find(x=>x.id===id);
-  if(!a) return;
-  document.getElementById('a-mes').value=a.mes;
-  document.getElementById('a-monto').value=a.usd;
-  eliminarAdelanto(id);
-  document.getElementById('a-mes').focus();
+  const item=adelantos.find(a=>a.id===id);if(!item)return;
+  $('a-mes').value=String(item.mes);$('a-monto').value=fmt(item.usd,2);
+  eliminarAdelanto(id);$('a-mes').focus();
 }
+document.addEventListener('DOMContentLoaded',()=>{onMkt();fetchMarketDefaults();});
 
-// ── init ──────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', ()=>{ onMkt(); onAmt('vv'); onAmt('mc'); calcular(); fetchMarketDefaults(); });
 </script>
 </body>
 </html>
